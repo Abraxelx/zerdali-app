@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
+/* Sınıf tabanlı koyu mod (sistem dayatması yerine .dark) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
+  --background: #faf7ff;
+  --foreground: #1b1430;
   --accent: #f59e0b;
+}
+
+.dark {
+  --background: #0b0a12;
+  --foreground: #f4f1fb;
 }
 
 @theme inline {
@@ -13,17 +21,66 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-  }
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  min-height: 100vh;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(at 0% 0%, rgba(251, 146, 60, 0.20) 0px, transparent 50%),
+    radial-gradient(at 98% 2%, rgba(168, 85, 247, 0.18) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.16) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(245, 158, 11, 0.16) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(at 0% 0%, rgba(168, 85, 247, 0.26) 0px, transparent 50%),
+    radial-gradient(at 98% 2%, rgba(251, 146, 60, 0.18) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.20) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(99, 102, 241, 0.22) 0px, transparent 50%);
+}
+
+/* Cam efektli (glassmorphism) yüzey */
+.glass {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+.dark .glass {
+  background: rgba(24, 22, 36, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+.dark .glass-strong {
+  background: rgba(18, 16, 28, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Marka degrade metni / butonu */
+.text-brand-gradient {
+  background: linear-gradient(135deg, #f97316, #ec4899, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bg-brand-gradient {
+  background: linear-gradient(135deg, #f97316, #ec4899, #a855f7);
 }
 
 @keyframes point-pop {
@@ -31,7 +88,6 @@ body {
   50% { transform: scale(1.15); color: #f59e0b; }
   100% { transform: scale(1); }
 }
-
 .animate-point-pop {
   animation: point-pop 0.6s ease-in-out;
 }
@@ -40,7 +96,6 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in-up {
   animation: fade-in-up 0.4s ease-out both;
 }
@@ -49,7 +104,6 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
-
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }

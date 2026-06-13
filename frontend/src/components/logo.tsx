@@ -28,7 +28,7 @@ export function Logo({ size = "md", showText = true, href, className = "" }: Log
         priority={size === "lg"}
       />
       {showText && (
-        <span className={`font-bold text-amber-500 ${size === "lg" ? "text-3xl" : "text-xl"}`}>
+        <span className={`font-bold text-brand-gradient ${size === "lg" ? "text-3xl" : "text-xl"}`}>
           Zerdali
         </span>
       )}

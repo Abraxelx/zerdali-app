@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-amber-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900 p-4">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center">
           <Logo size="lg" className="justify-center" />
