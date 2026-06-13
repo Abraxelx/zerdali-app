@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Gem, Star, Trophy, Zap } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Card, LevelProgress, LoadingSpinner, PageHeader, RarityBadge, StatCard } from "@/components/ui";
+import { Card, IconBubble, LevelProgress, LoadingSpinner, PageHeader, RarityBadge, StatCard } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -29,7 +29,7 @@ function DashboardContent() {
 
   return (
     <>
-      <PageHeader title="Panel" subtitle="Zerdalyum yolculuğuna hoş geldin" />
+      <PageHeader title={`Merhaba, ${user?.full_name?.split(" ")[0] ?? ""} 👋`} subtitle="Zerdalyum yolculuğuna hoş geldin" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard icon={Zap} label="Zerdalyum" value={points?.total_zerdalyum ?? 0} color="amber" />
         <StatCard icon={Star} label="Güç" value={Math.round(level?.effective_power ?? 0)} sub={`×${level?.effective_multiplier ?? 1} çarpan`} color="purple" />
@@ -51,12 +51,15 @@ function DashboardContent() {
           <h2 className="font-semibold mb-4">Meblağlarım</h2>
           {meblahs && meblahs.length > 0 ? (
             <div className="space-y-2">
-              {(meblahs as { meblah_types?: { name: string; rarity: string; zerdalyum_multiplier: number } }[]).map((m, i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg bg-zinc-50 dark:bg-zinc-800 p-3">
-                  <span className="font-medium">{m.meblah_types?.name}</span>
+              {(meblahs as { meblah_types?: { name: string; rarity: string; zerdalyum_multiplier: number; icon_url?: string | null } }[]).map((m, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl bg-zinc-50 p-3 transition hover:scale-[1.01] dark:bg-zinc-800">
+                  <div className="flex items-center gap-3">
+                    <IconBubble src={m.meblah_types?.icon_url} size={36} fallback={<Gem size={18} />} />
+                    <span className="font-medium">{m.meblah_types?.name}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <RarityBadge rarity={m.meblah_types?.rarity ?? "common"} />
-                    <span className="text-sm text-amber-500">×{m.meblah_types?.zerdalyum_multiplier}</span>
+                    <span className="text-sm font-semibold text-amber-500">×{m.meblah_types?.zerdalyum_multiplier}</span>
                   </div>
                 </div>
               ))}

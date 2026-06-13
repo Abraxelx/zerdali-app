@@ -22,6 +22,7 @@ const adminLinks = [
   { href: "/admin/groups", label: "Gruplar" },
   { href: "/admin/lessons", label: "Dersler" },
   { href: "/admin/assignments", label: "Ödevler" },
+  { href: "/admin/approvals", label: "Ödev Onay" },
   { href: "/admin/gamification", label: "Oyunlaştırma" },
   { href: "/admin/users", label: "Kullanıcılar" },
   { href: "/admin/points", label: "Puanlar" },
@@ -54,6 +55,14 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
             ))}
           </nav>
           <div className="flex items-center gap-3">
+            {user?.profile_photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.profile_photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+                {user?.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+              </div>
+            )}
             <span className="hidden sm:block text-sm text-zinc-500">{user?.full_name}</span>
             <button onClick={logout} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
               <LogOut size={18} />

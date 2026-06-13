@@ -55,12 +55,21 @@ def get_submissions(assignment_id):
     return jsonify(assignment_service.get_submissions(assignment_id))
 
 
-@assignment_bp.route("/admin/submissions/<submission_id>", methods=["PUT"])
+@assignment_bp.route("/admin/submissions/pending", methods=["GET"])
 @require_role("superadmin")
-def grade_submission(submission_id):
+def pending_submissions():
+    return jsonify(assignment_service.get_pending_submissions())
+
+
+@assignment_bp.route("/admin/submissions/<submission_id>/review", methods=["POST"])
+@require_role("superadmin")
+def review_submission(submission_id):
     data = request.get_json() or {}
     return jsonify(
-        assignment_service.grade_submission(
-            submission_id, data.get("score"), data.get("feedback")
+        assignment_service.review_submission(
+            submission_id,
+            data.get("action"),
+            data.get("score"),
+            data.get("feedback"),
         )
     )

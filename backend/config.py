@@ -39,6 +39,9 @@ class Config:
     POINTS_HOMEWORK_SUBMIT = 20
     POINTS_HOMEWORK_SCORE_MULTIPLIER = 10
 
+    # Homework rules
+    HOMEWORK_DUE_DAYS = 7  # Ödev verildiği andan itibaren otomatik süre
+
     # Storage buckets
     BUCKET_PROFILE_IMAGES = "profile-images"
     BUCKET_ASSIGNMENT_FILES = "assignment-files"

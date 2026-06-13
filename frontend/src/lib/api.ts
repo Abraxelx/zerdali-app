@@ -72,8 +72,8 @@ export const api = {
     apiFetch<{
       effective_power: number;
       effective_multiplier: number;
-      current_level: { level_number: number; title: string; required_zerdalyum: number } | null;
-      next_level: { level_number: number; title: string; required_zerdalyum: number } | null;
+      current_level: { level_number: number; title: string; required_zerdalyum: number; icon_url?: string | null } | null;
+      next_level: { level_number: number; title: string; required_zerdalyum: number; icon_url?: string | null } | null;
     }>("/student/level"),
   getMeblahs: () => apiFetch<unknown[]>("/student/meblahs"),
   getAchievements: () => apiFetch<unknown[]>("/student/achievements"),
@@ -86,6 +86,11 @@ export const api = {
     apiFetch(`/student/assignments/${id}/submit`, { method: "POST", body }),
   updateProfile: (body: Record<string, string>) =>
     apiFetch<Profile>("/student/profile", { method: "PUT", body: JSON.stringify(body) }),
+  uploadProfilePhoto: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiFetch<{ url: string; profile: Profile }>("/upload/profile", { method: "POST", body: fd });
+  },
 
   // Admin
   getUsers: (role?: string) => apiFetch<Profile[]>(`/admin/users${role ? `?role=${role}` : ""}`),
@@ -125,11 +130,18 @@ export const api = {
     apiFetch("/admin/assignments", { method: "POST", body }),
   getSubmissions: (assignmentId: string) =>
     apiFetch<unknown[]>(`/admin/assignments/${assignmentId}/submissions`),
-  gradeSubmission: (id: string, score: number, feedback?: string) =>
-    apiFetch(`/admin/submissions/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ score, feedback }),
+  getPendingSubmissions: () =>
+    apiFetch<unknown[]>("/admin/submissions/pending"),
+  reviewSubmission: (id: string, action: "approve" | "reject", score?: number, feedback?: string) =>
+    apiFetch(`/admin/submissions/${id}/review`, {
+      method: "POST",
+      body: JSON.stringify({ action, score, feedback }),
     }),
+  uploadIcon: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiFetch<{ url: string }>("/upload/icon", { method: "POST", body: fd });
+  },
   getMeblahTypes: () => apiFetch<unknown[]>("/admin/meblah-types"),
   updateMeblahType: (id: string, body: Record<string, unknown>) =>
     apiFetch(`/admin/meblah-types/${id}`, { method: "PUT", body: JSON.stringify(body) }),

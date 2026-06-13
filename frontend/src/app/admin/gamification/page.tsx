@@ -1,14 +1,54 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ImagePlus } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, Input, LoadingSpinner, PageHeader, RarityBadge } from "@/components/ui";
+import { Button, Card, IconBubble, Input, LoadingSpinner, PageHeader, RarityBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 
+function IconUploader({ current, onUploaded }: { current?: string | null; onUploaded: (url: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const handle = async (file: File) => {
+    setBusy(true);
+    try {
+      const res = await api.uploadIcon(file);
+      onUploaded(res.url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Yükleme başarısız");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => ref.current?.click()}
+      className="relative shrink-0"
+      title="Görsel yükle (png, jpg, svg)"
+    >
+      <IconBubble src={current} size={44} fallback={<ImagePlus size={18} />} />
+      {busy && <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 text-[10px] text-white">...</span>}
+      <input
+        ref={ref}
+        type="file"
+        accept="image/png,image/jpeg,image/svg+xml"
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && handle(e.target.files[0])}
+      />
+    </button>
+  );
+}
+
+type MeblahType = { id: string; name: string; rarity: string; zerdalyum_multiplier: number; icon_url?: string | null };
+type Level = { id: string; level_number: number; title: string; required_zerdalyum: number; icon_url?: string | null };
+
 export default function AdminGamificationPage() {
-  const { data: meblahTypes, isLoading: lm } = useQuery({ queryKey: ["meblah-types"], queryFn: api.getMeblahTypes });
-  const { data: levels, isLoading: ll } = useQuery({ queryKey: ["levels"], queryFn: api.getLevels });
+  const { data: meblahTypes, isLoading: lm } = useQuery({ queryKey: ["meblah-types"], queryFn: () => api.getMeblahTypes() as Promise<MeblahType[]> });
+  const { data: levels, isLoading: ll } = useQuery({ queryKey: ["levels"], queryFn: () => api.getLevels() as Promise<Level[]> });
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => api.getUsers("student") });
   const [edits, setEdits] = useState<Record<string, { name?: string; zerdalyum_multiplier?: string }>>({});
   const [levelEdits, setLevelEdits] = useState<Record<string, { title?: string; required_zerdalyum?: string }>>({});
@@ -16,22 +56,22 @@ export default function AdminGamificationPage() {
   const [grantMeblah, setGrantMeblah] = useState("");
   const qc = useQueryClient();
 
-  const saveMeblah = async (id: string) => {
+  const saveMeblah = async (id: string, extra?: Record<string, unknown>) => {
     const edit = edits[id];
-    if (!edit) return;
     await api.updateMeblahType(id, {
-      ...(edit.name && { name: edit.name }),
-      ...(edit.zerdalyum_multiplier && { zerdalyum_multiplier: parseFloat(edit.zerdalyum_multiplier) }),
+      ...(edit?.name && { name: edit.name }),
+      ...(edit?.zerdalyum_multiplier && { zerdalyum_multiplier: parseFloat(edit.zerdalyum_multiplier) }),
+      ...extra,
     });
     qc.invalidateQueries({ queryKey: ["meblah-types"] });
   };
 
-  const saveLevel = async (id: string) => {
+  const saveLevel = async (id: string, extra?: Record<string, unknown>) => {
     const edit = levelEdits[id];
-    if (!edit) return;
     await api.updateLevel(id, {
-      ...(edit.title && { title: edit.title }),
-      ...(edit.required_zerdalyum && { required_zerdalyum: parseInt(edit.required_zerdalyum) }),
+      ...(edit?.title && { title: edit.title }),
+      ...(edit?.required_zerdalyum && { required_zerdalyum: parseInt(edit.required_zerdalyum) }),
+      ...extra,
     });
     qc.invalidateQueries({ queryKey: ["levels"] });
   };
@@ -51,20 +91,18 @@ export default function AdminGamificationPage() {
   return (
     <AuthGuard role="superadmin">
       <AppLayout variant="admin">
-        <PageHeader title="Oyunlaştırma" subtitle="Meblağ ve seviye yönetimi" />
+        <PageHeader title="Oyunlaştırma" subtitle="Meblağ ve seviye yönetimi — görselleri buradan yükle" />
 
         <Card className="mb-6">
           <h3 className="font-semibold mb-4">Meblağ Ver</h3>
           <div className="grid gap-3 sm:grid-cols-3">
-            <select className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm" value={grantStudent} onChange={(e) => setGrantStudent(e.target.value)}>
+            <select className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm dark:bg-zinc-800" value={grantStudent} onChange={(e) => setGrantStudent(e.target.value)}>
               <option value="">Öğrenci seç</option>
               {users?.map((u) => <option key={u.id} value={u.id}>{u.full_name}</option>)}
             </select>
-            <select className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm" value={grantMeblah} onChange={(e) => setGrantMeblah(e.target.value)}>
+            <select className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm dark:bg-zinc-800" value={grantMeblah} onChange={(e) => setGrantMeblah(e.target.value)}>
               <option value="">Meblağ seç</option>
-              {(meblahTypes as { id: string; name: string }[] | undefined)?.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
+              {meblahTypes?.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
             <Button onClick={grant}>Ver</Button>
           </div>
@@ -73,13 +111,16 @@ export default function AdminGamificationPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <h3 className="font-semibold mb-4">Meblağ Tipleri</h3>
-            {(meblahTypes as { id: string; name: string; rarity: string; zerdalyum_multiplier: number }[] | undefined)?.map((m) => (
-              <div key={m.id} className="border-b border-zinc-100 dark:border-zinc-800 py-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <RarityBadge rarity={m.rarity} />
-                  <span className="text-sm text-zinc-500">×{m.zerdalyum_multiplier}</span>
+            {meblahTypes?.map((m) => (
+              <div key={m.id} className="border-b border-zinc-100 dark:border-zinc-800 py-3">
+                <div className="flex items-center gap-3">
+                  <IconUploader current={m.icon_url} onUploaded={(url) => saveMeblah(m.id, { icon_url: url })} />
+                  <div className="flex flex-1 items-center gap-2">
+                    <RarityBadge rarity={m.rarity} />
+                    <span className="text-sm text-zinc-500">×{m.zerdalyum_multiplier}</span>
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="mt-2 flex gap-2">
                   <Input
                     placeholder="İsim"
                     defaultValue={m.name}
@@ -98,10 +139,13 @@ export default function AdminGamificationPage() {
 
           <Card>
             <h3 className="font-semibold mb-4">Seviyeler</h3>
-            {(levels as { id: string; level_number: number; title: string; required_zerdalyum: number }[] | undefined)?.map((l) => (
-              <div key={l.id} className="border-b border-zinc-100 dark:border-zinc-800 py-3 space-y-2">
-                <span className="text-xs text-zinc-400">Seviye {l.level_number}</span>
-                <div className="flex gap-2">
+            {levels?.map((l) => (
+              <div key={l.id} className="border-b border-zinc-100 dark:border-zinc-800 py-3">
+                <div className="flex items-center gap-3">
+                  <IconUploader current={l.icon_url} onUploaded={(url) => saveLevel(l.id, { icon_url: url })} />
+                  <span className="text-xs text-zinc-400">Seviye {l.level_number}</span>
+                </div>
+                <div className="mt-2 flex gap-2">
                   <Input
                     placeholder="Başlık"
                     defaultValue={l.title}

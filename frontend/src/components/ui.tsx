@@ -1,9 +1,45 @@
-import { LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, LucideIcon, Trophy, XCircle } from "lucide-react";
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${className}`}>
+    <div className={`rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 ${className}`}>
       {children}
+    </div>
+  );
+}
+
+export function StatusBadge({ status, isLate }: { status: string; isLate?: boolean }) {
+  const config: Record<string, { label: string; cls: string; Icon: LucideIcon }> = {
+    pending: { label: "Bekliyor", cls: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400", Icon: Clock },
+    approved: { label: "Onaylandı", cls: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400", Icon: CheckCircle2 },
+    rejected: { label: "Reddedildi", cls: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400", Icon: XCircle },
+  };
+  const c = config[status] || config.pending;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${c.cls}`}>
+        <c.Icon size={13} /> {c.label}
+      </span>
+      {isLate && (
+        <span className="rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-700 dark:bg-orange-950 dark:text-orange-400">
+          Geç teslim
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function IconBubble({ src, fallback, size = 40 }: { src?: string | null; fallback?: React.ReactNode; size?: number }) {
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" width={size} height={size} className="rounded-lg object-cover" style={{ width: size, height: size }} />;
+  }
+  return (
+    <div
+      className="flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-100 to-amber-200 text-amber-600 dark:from-amber-950 dark:to-amber-900 dark:text-amber-400"
+      style={{ width: size, height: size }}
+    >
+      {fallback}
     </div>
   );
 }
@@ -64,9 +100,9 @@ export function StatCard({
     green: "bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400",
   };
   return (
-    <Card>
+    <Card className="animate-fade-in-up">
       <div className="flex items-start gap-4">
-        <div className={`rounded-lg p-3 ${colors[color]}`}>
+        <div className={`rounded-xl p-3 ${colors[color]}`}>
           <Icon size={24} />
         </div>
         <div>
@@ -99,29 +135,41 @@ export function LevelProgress({
   next,
   power,
 }: {
-  current: { title: string; required_zerdalyum: number } | null;
-  next: { title: string; required_zerdalyum: number } | null;
+  current: { title: string; required_zerdalyum: number; icon_url?: string | null } | null;
+  next: { title: string; required_zerdalyum: number; icon_url?: string | null } | null;
   power: number;
 }) {
   if (!current) return null;
   const start = current.required_zerdalyum;
   const end = next?.required_zerdalyum ?? start;
-  const progress = next ? Math.min(100, ((power - start) / (end - start)) * 100) : 100;
+  const progress = next ? Math.min(100, Math.max(0, ((power - start) / (end - start || 1)) * 100)) : 100;
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="font-medium">{current.title}</span>
-        {next && <span className="text-zinc-500">→ {next.title}</span>}
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <IconBubble src={current.icon_url} size={48} fallback={<Trophy size={24} />} />
+        <div className="flex-1">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-semibold">{current.title}</span>
+            {next && (
+              <span className="flex items-center gap-1 text-zinc-500">
+                <ArrowRight size={14} /> {next.title}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-zinc-400">Mevcut seviye</p>
+        </div>
+        {next && <IconBubble src={next.icon_url} size={40} fallback={<Trophy size={20} />} />}
       </div>
-      <div className="h-3 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+      <div className="relative h-4 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-500"
+          className="h-full rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 transition-all duration-700"
           style={{ width: `${progress}%` }}
         />
       </div>
       <p className="text-xs text-zinc-500">
         {Math.round(power)} / {next ? next.required_zerdalyum : "MAX"} güç
+        {next && <span className="ml-1 text-amber-500 font-medium">(%{Math.round(progress)})</span>}
       </p>
     </div>
   );
