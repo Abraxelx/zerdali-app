@@ -6,6 +6,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 
 const studentLinks = [
@@ -35,8 +36,8 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="min-h-screen">
+      <header className="glass-strong sticky top-0 z-50 border-b border-white/40 dark:border-white/10">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <Logo href={variant === "admin" ? "/admin" : "/dashboard"} size="sm" />
           <nav className="hidden md:flex items-center gap-1">
@@ -46,15 +47,16 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
                 href={link.href}
                 className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                   pathname === link.href
-                    ? "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             {user?.profile_photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.profile_photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
@@ -64,22 +66,22 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
               </div>
             )}
             <span className="hidden sm:block text-sm text-zinc-500">{user?.full_name}</span>
-            <button onClick={logout} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <button onClick={logout} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-500/10 hover:text-red-500">
               <LogOut size={18} />
             </button>
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden rounded-lg p-2">
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden rounded-lg p-2 text-zinc-500 hover:bg-zinc-500/10">
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
         {mobileOpen && (
-          <nav className="md:hidden border-t border-zinc-200 dark:border-zinc-800 p-4 space-y-1">
+          <nav className="md:hidden border-t border-white/30 p-4 space-y-1 dark:border-white/10">
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100"
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
               >
                 {link.label}
               </Link>
@@ -103,8 +105,8 @@ export function AuthGuard({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-50 dark:bg-zinc-950">
-        <Image src="/zerdali-logo.png" alt="Zerdali" width={48} height={48} className="object-contain" />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <Image src="/zerdali-logo.png" alt="Zerdali" width={48} height={48} className="object-contain animate-float" />
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
       </div>
     );

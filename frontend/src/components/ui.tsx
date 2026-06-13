@@ -1,10 +1,26 @@
-import { ArrowRight, CheckCircle2, Clock, LucideIcon, Trophy, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, LucideIcon, Moon, Sun, Trophy, XCircle } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 ${className}`}>
+    <div className={`glass rounded-2xl p-6 shadow-sm transition hover:shadow-lg ${className}`}>
       {children}
     </div>
+  );
+}
+
+export function ThemeToggle() {
+  const { toggle } = useTheme();
+  return (
+    <button
+      onClick={toggle}
+      aria-label="Tema değiştir"
+      title="Tema değiştir"
+      className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-500/10 hover:text-amber-500"
+    >
+      <Moon size={18} className="dark:hidden" />
+      <Sun size={18} className="hidden dark:block" />
+    </button>
   );
 }
 
@@ -51,13 +67,13 @@ export function Button({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" }) {
   const variants = {
-    primary: "bg-amber-500 hover:bg-amber-600 text-white",
-    secondary: "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white",
+    primary: "bg-brand-gradient text-white shadow-sm hover:shadow-md hover:brightness-105",
+    secondary: "bg-white/60 hover:bg-white/80 text-zinc-900 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white",
     danger: "bg-red-500 hover:bg-red-600 text-white",
   };
   return (
     <button
-      className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`rounded-lg px-4 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50 ${variants[variant]} ${className}`}
       {...props}
     >
       {children}
@@ -73,7 +89,7 @@ export function Input({
     <label className="block space-y-1">
       {label && <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{label}</span>}
       <input
-        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+        className="w-full rounded-lg border border-zinc-300/70 bg-white/70 px-3 py-2 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 dark:border-zinc-700/70 dark:bg-zinc-900/50"
         {...props}
       />
     </label>
