@@ -17,7 +17,7 @@ def create_assignment(data: dict, file=None) -> dict:
     file_url = None
     if file:
         from utils.file_upload import upload_file
-        file_url = upload_file(file, Config.BUCKET_ASSIGNMENT_FILES, "assignments")
+        file_url = upload_file(file, Config.BUCKET_ASSIGNMENT_FILES, "assignments", Config.DOCUMENT_EXTENSIONS)
 
     # Süre verildiği andan itibaren otomatik (varsayılan 1 hafta).
     due_date = (datetime.now(timezone.utc) + timedelta(days=Config.HOMEWORK_DUE_DAYS)).isoformat()
@@ -121,7 +121,7 @@ def submit_assignment(assignment_id: str, student_id: str, data: dict, file=None
     file_url = None
     if file:
         from utils.file_upload import upload_file
-        file_url = upload_file(file, Config.BUCKET_SUBMISSION_FILES, "submissions")
+        file_url = upload_file(file, Config.BUCKET_SUBMISSION_FILES, "submissions", Config.DOCUMENT_EXTENSIONS)
 
     payload = {
         "assignment_id": assignment_id,

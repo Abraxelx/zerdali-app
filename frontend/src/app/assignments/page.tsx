@@ -121,6 +121,7 @@ export default function AssignmentsPage() {
                         <span>{files[a.id]?.name ?? "Dosya ekle (opsiyonel)"}</span>
                         <input
                           type="file"
+                          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.rar,.png,.jpg,.jpeg,.webp"
                           className="hidden"
                           onChange={(e) => setFiles({ ...files, [a.id]: e.target.files?.[0] ?? null })}
                         />

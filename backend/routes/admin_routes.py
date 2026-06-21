@@ -49,7 +49,7 @@ def upload_profile():
     if not file:
         from utils.errors import APIError
         raise APIError("file is required", 422)
-    url = upload_file(file, Config.BUCKET_PROFILE_IMAGES, "profiles")
+    url = upload_file(file, Config.BUCKET_PROFILE_IMAGES, "profiles", Config.IMAGE_EXTENSIONS)
     profile = auth_service.update_profile(user["id"], {"profile_photo_url": url})
     return jsonify({"url": url, "profile": profile})
 
@@ -61,5 +61,5 @@ def upload_icon():
     if not file:
         from utils.errors import APIError
         raise APIError("file is required", 422)
-    url = upload_file(file, Config.BUCKET_ICONS, "icons")
+    url = upload_file(file, Config.BUCKET_ICONS, "icons", Config.IMAGE_EXTENSIONS)
     return jsonify({"url": url})

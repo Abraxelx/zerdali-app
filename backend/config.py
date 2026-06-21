@@ -48,4 +48,14 @@ class Config:
     BUCKET_SUBMISSION_FILES = "submission-files"
     BUCKET_ICONS = "icons"
 
-    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "svg", "txt"}
+    # İzin verilen dosya türleri
+    IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "svg", "webp", "gif"}
+    DOCUMENT_EXTENSIONS = IMAGE_EXTENSIONS | {
+        "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx",
+        "txt", "csv", "zip", "rar", "odt", "odp", "ods",
+    }
+    # Geriye dönük uyumluluk için varsayılan (geniş) küme
+    ALLOWED_EXTENSIONS = DOCUMENT_EXTENSIONS
+
+    # Maksimum yükleme boyutu (25 MB)
+    MAX_CONTENT_LENGTH = 25 * 1024 * 1024

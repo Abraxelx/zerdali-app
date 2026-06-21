@@ -21,6 +21,10 @@ def register_error_handlers(app):
     def handle_not_found(_err):
         return error_response("Not found", 404)
 
+    @app.errorhandler(413)
+    def handle_too_large(_err):
+        return error_response("Dosya çok büyük (en fazla 25 MB).", 413)
+
     @app.errorhandler(422)
     def handle_unprocessable(_err):
         return error_response("Unprocessable entity", 422)
