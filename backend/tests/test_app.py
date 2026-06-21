@@ -44,6 +44,11 @@ def test_admin_groups_unauthorized(client):
     assert response.status_code == 401
 
 
+def test_forum_unauthorized(client):
+    response = client.get("/forum/groups")
+    assert response.status_code == 401
+
+
 def test_forgot_password_missing_email(client):
     response = client.post("/auth/forgot-password", json={})
     assert response.status_code == 422

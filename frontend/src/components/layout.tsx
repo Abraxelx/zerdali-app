@@ -16,6 +16,7 @@ const studentLinks = [
   { href: "/attendance", label: "Yoklama" },
   { href: "/scores", label: "Notlar" },
   { href: "/assignments", label: "Ödevler" },
+  { href: "/forum", label: "Forum" },
   { href: "/profile", label: "Profil" },
 ];
 
@@ -25,6 +26,7 @@ const adminLinks = [
   { href: "/admin/lessons", label: "Dersler" },
   { href: "/admin/assignments", label: "Ödevler" },
   { href: "/admin/approvals", label: "Ödev Onay" },
+  { href: "/forum", label: "Forum" },
   { href: "/admin/gamification", label: "Oyunlaştırma" },
   { href: "/admin/students", label: "Öğrenciler" },
   { href: "/admin/users", label: "Kullanıcılar" },

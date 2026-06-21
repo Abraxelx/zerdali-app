@@ -59,6 +59,41 @@ export type StudentOverview = {
   groups: { group_id: string; student_groups?: { group_name: string } }[];
 };
 
+export type ForumAuthor = Pick<Profile, "id" | "full_name" | "username" | "profile_photo_url" | "role">;
+
+export type ForumTopic = {
+  id: string;
+  title: string;
+  body: string;
+  author_id: string;
+  group_id: string;
+  created_at: string;
+  author?: ForumAuthor | null;
+  comment_count?: number;
+  group?: { id: string; group_name: string };
+};
+
+export type ForumGroup = {
+  id: string;
+  group_name: string;
+  lesson_day?: number;
+  lesson_hour?: number | string;
+  is_active?: boolean;
+};
+
+export type ForumComment = {
+  id: string;
+  topic_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  author?: ForumAuthor | null;
+};
+
+export type ForumTopicDetail = ForumTopic & {
+  comments: ForumComment[];
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("zerdali_token");
@@ -218,4 +253,17 @@ export const api = {
   getStudentOverview: (studentId: string) => apiFetch<StudentOverview>(`/admin/students/${studentId}/overview`),
   removeStudentMeblah: (studentId: string, recordId: string) =>
     apiFetch(`/admin/students/${studentId}/meblahs/${recordId}`, { method: "DELETE" }),
+
+  getForumGroups: () => apiFetch<ForumGroup[]>("/forum/groups"),
+  getForumTopics: (groupId: string) => apiFetch<ForumTopic[]>(`/forum/groups/${groupId}/topics`),
+  getForumQuota: () =>
+    apiFetch<{ can_create: boolean; remaining_today: number | null; limit_per_day: number | null }>("/forum/quota"),
+  getForumTopic: (id: string) => apiFetch<ForumTopicDetail>(`/forum/topics/${id}`),
+  createForumTopic: (groupId: string, body: { title: string; body: string }) =>
+    apiFetch<ForumTopic>(`/forum/groups/${groupId}/topics`, { method: "POST", body: JSON.stringify(body) }),
+  createForumComment: (topicId: string, body: string) =>
+    apiFetch<ForumComment>(`/forum/topics/${topicId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }),
 };
