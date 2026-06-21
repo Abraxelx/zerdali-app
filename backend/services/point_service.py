@@ -36,6 +36,21 @@ def grant_points(student_id: str, amount: int, transaction_type: str, descriptio
 
     log_event("POINT_GRANTED", student_id, {"amount": amount, "type": transaction_type, "description": description})
 
+    if amount > 0 and transaction_type not in ("HOMEWORK_SCORE",):
+        from services.notification_service import notify_user
+        titles = {
+            "ATTENDANCE": "Yoklama puanı",
+            "LESSON_SCORE": "Ders notu puanı",
+            "ADMIN_BONUS": "Bonus puan",
+            "HOMEWORK": "Ödev puanı",
+        }
+        notify_user(
+            student_id,
+            "POINTS",
+            titles.get(transaction_type, "Puan kazandın!"),
+            f"+{amount} Zerdalyum — {description}",
+        )
+
     from services.gamification_service import check_level_up
     check_level_up(student_id)
 

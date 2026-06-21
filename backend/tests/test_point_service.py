@@ -12,7 +12,8 @@ from utils.errors import APIError
 @patch("services.point_service.get_supabase_admin")
 @patch("services.point_service.log_event")
 @patch("services.gamification_service.check_level_up")
-def test_grant_points_uses_transaction_type_column(mock_level_up, mock_log, mock_supabase):
+@patch("services.notification_service.notify_user")
+def test_grant_points_uses_transaction_type_column(mock_notify, mock_level_up, mock_log, mock_supabase):
     from services.point_service import grant_points
 
     mock_db = MagicMock()
@@ -20,7 +21,9 @@ def test_grant_points_uses_transaction_type_column(mock_level_up, mock_log, mock
 
     points_table = MagicMock()
     tx_table = MagicMock()
-    mock_db.table.side_effect = lambda name: points_table if name == "student_points" else tx_table
+    mock_db.table.side_effect = lambda name: (
+        points_table if name == "student_points" else tx_table if name == "point_transactions" else MagicMock()
+    )
 
     points_table.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
         data={"student_id": "student-id", "total_zerdalyum": 5}

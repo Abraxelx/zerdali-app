@@ -32,7 +32,19 @@ def create_assignment(data: dict, file=None) -> dict:
             "due_date": due_date,
         }
     ).execute()
-    return result.data[0]
+    assignment = result.data[0]
+
+    lesson = db.table("lessons").select("group_id").eq("id", data["lesson_id"]).maybe_single().execute()
+    lesson_data = get_data(lesson)
+    if lesson_data:
+        from services.notification_service import notify_group_students
+        notify_group_students(
+            lesson_data["group_id"],
+            "ASSIGNMENT_CREATED",
+            "Yeni ödev",
+            f'"{data["title"]}" ödevi verildi. Teslim et!',
+        )
+    return assignment
 
 
 def list_assignments(lesson_id: str | None = None) -> list:
@@ -133,8 +145,16 @@ def submit_assignment(assignment_id: str, student_id: str, data: dict, file=None
     }
     result = db.table("assignment_submissions").insert(payload).execute()
 
-    # Puan teslimde DEĞİL, admin onayında verilir.
     log_event("HOMEWORK_SUBMITTED", student_id, {"assignment_id": assignment_id})
+
+    profile = db.table("profiles").select("full_name").eq("id", student_id).maybe_single().execute()
+    name = get_data(profile).get("full_name", "Öğrenci") if get_data(profile) else "Öğrenci"
+    from services.notification_service import notify_superadmins
+    notify_superadmins(
+        "HOMEWORK_SUBMITTED",
+        "Yeni ödev teslimi",
+        f'{name} "{assignment["title"]}" ödevini teslim etti.',
+    )
     return result.data[0] if result.data else payload
 
 
@@ -203,7 +223,21 @@ def review_submission(submission_id: str, action: str, score: int | None = None,
         from services.point_service import grant_homework_score_points
         grant_homework_score_points(submission["student_id"], submission["assignment_id"], score)
         log_event("HOMEWORK_APPROVED", submission["student_id"], {"assignment_id": submission["assignment_id"], "score": score})
+        assignment = get_assignment(submission["assignment_id"])
+        from services.notification_service import notify_user
+        notify_user(
+            submission["student_id"],
+            "HOMEWORK_APPROVED",
+            "Ödevin onaylandı!",
+            f'"{assignment["title"]}" — not: {score} (+{score * Config.POINTS_HOMEWORK_SCORE_MULTIPLIER} Zerdalyum)',
+        )
     else:
         log_event("HOMEWORK_REJECTED", submission["student_id"], {"assignment_id": submission["assignment_id"]})
+        assignment = get_assignment(submission["assignment_id"])
+        from services.notification_service import notify_user
+        msg = f'"{assignment["title"]}" ödevin reddedildi.'
+        if feedback:
+            msg += f" Geri bildirim: {feedback}"
+        notify_user(submission["student_id"], "HOMEWORK_REJECTED", "Ödev reddedildi", msg)
 
     return reviewed

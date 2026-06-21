@@ -85,8 +85,11 @@ def add_member(group_id: str, student_id: str) -> dict:
     db = get_supabase_admin()
 
     profile = db.table("profiles").select("id, role").eq("id", student_id).maybe_single().execute()
-    if not get_data(profile):
+    profile_data = get_data(profile)
+    if not profile_data:
         raise APIError("Student not found", 404)
+    if profile_data.get("role") != "student":
+        raise APIError("Gruba yalnızca öğrenci eklenebilir", 422)
 
     existing = (
         db.table("student_group_members")
@@ -147,8 +150,9 @@ def get_group_members(group_id: str) -> list:
     student_ids = [m["student_id"] for m in members]
     profiles_result = (
         db.table("profiles")
-        .select("id, full_name, username, email")
+        .select("id, full_name, username, email, role")
         .in_("id", student_ids)
+        .eq("role", "student")
         .execute()
     )
     profile_map = {p["id"]: p for p in (get_data(profiles_result) or [])}

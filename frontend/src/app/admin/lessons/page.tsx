@@ -1,36 +1,105 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, Input, LoadingSpinner, PageHeader } from "@/components/ui";
-import { api } from "@/lib/api";
+import { api, GroupMember } from "@/lib/api";
+
+type Lesson = { id: string; lesson_title: string; lesson_date: string; lesson_time?: string };
+type AttendanceRow = { student_id: string; status: string; profiles?: { full_name: string } };
+type ScoreRow = { student_id: string; score: number; profiles?: { full_name: string } };
+
+const statusLabels: Record<string, string> = {
+  present: "Katıldı",
+  absent: "Katılmadı",
+  late: "Geç",
+  excused: "Mazeret",
+};
+
+function formatLessonWhen(lesson: Lesson) {
+  const date = new Date(lesson.lesson_date).toLocaleDateString("tr-TR");
+  return lesson.lesson_time ? `${date} · ${lesson.lesson_time}` : date;
+}
 
 export default function AdminLessonsPage() {
   const { data: groups } = useQuery({ queryKey: ["admin-groups"], queryFn: api.getAdminGroups });
-  const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => api.getUsers("student") });
   const [groupId, setGroupId] = useState("");
-  const { data: lessons, isLoading } = useQuery({
-    queryKey: ["admin-lessons", groupId],
-    queryFn: () => api.getAdminLessons(groupId || undefined),
+  const { data: members } = useQuery({
+    queryKey: ["group-members", groupId],
+    queryFn: () => api.getGroupMembers(groupId),
     enabled: !!groupId,
   });
-  const [form, setForm] = useState({ lesson_title: "", lesson_date: "", notes: "" });
+  const { data: lessons, isLoading } = useQuery({
+    queryKey: ["admin-lessons", groupId],
+    queryFn: () => api.getAdminLessons(groupId || undefined) as Promise<Lesson[]>,
+    enabled: !!groupId,
+  });
+  const [form, setForm] = useState({ lesson_title: "", lesson_date: "", lesson_time: "", notes: "" });
   const [selectedLesson, setSelectedLesson] = useState("");
   const [attendance, setAttendance] = useState<Record<string, string>>({});
   const [scores, setScores] = useState<Record<string, string>>({});
   const qc = useQueryClient();
 
+  const { data: savedAttendance, isLoading: loadingAttendance } = useQuery({
+    queryKey: ["lesson-attendance", selectedLesson],
+    queryFn: () => api.getAdminLessonAttendance(selectedLesson) as Promise<AttendanceRow[]>,
+    enabled: !!selectedLesson,
+  });
+  const { data: savedScores, isLoading: loadingScores } = useQuery({
+    queryKey: ["lesson-scores", selectedLesson],
+    queryFn: () => api.getAdminLessonScores(selectedLesson) as Promise<ScoreRow[]>,
+    enabled: !!selectedLesson,
+  });
+
+  const students = useMemo(
+    () =>
+      (members as GroupMember[] | undefined)
+        ?.map((m) => m.profiles)
+        .filter((p): p is NonNullable<typeof p> => !!p) ?? [],
+    [members]
+  );
+
+  useEffect(() => {
+    if (!savedAttendance) return;
+    const next: Record<string, string> = {};
+    savedAttendance.forEach((row) => {
+      next[row.student_id] = row.status;
+    });
+    setAttendance(next);
+  }, [savedAttendance]);
+
+  useEffect(() => {
+    if (!savedScores) return;
+    const next: Record<string, string> = {};
+    savedScores.forEach((row) => {
+      next[row.student_id] = String(row.score);
+    });
+    setScores(next);
+  }, [savedScores]);
+
   const create = async () => {
-    if (!groupId) return;
-    await api.createLesson({ ...form, group_id: groupId });
-    setForm({ lesson_title: "", lesson_date: "", notes: "" });
+    if (!groupId || !form.lesson_title || !form.lesson_date) return;
+    await api.createLesson({
+      ...form,
+      group_id: groupId,
+      ...(form.lesson_time ? { lesson_time: form.lesson_time } : {}),
+    });
+    setForm({ lesson_title: "", lesson_date: "", lesson_time: "", notes: "" });
     qc.invalidateQueries({ queryKey: ["admin-lessons"] });
   };
 
   const submitAttendance = async () => {
-    const records = Object.entries(attendance).map(([student_id, status]) => ({ student_id, status }));
+    const records = Object.entries(attendance)
+      .filter(([, status]) => status)
+      .map(([student_id, status]) => ({ student_id, status }));
+    if (!records.length) {
+      alert("En az bir öğrenci için yoklama seç");
+      return;
+    }
     await api.markAttendance(selectedLesson, records);
+    qc.invalidateQueries({ queryKey: ["lesson-attendance", selectedLesson] });
     alert("Yoklama kaydedildi");
   };
 
@@ -39,8 +108,11 @@ export default function AdminLessonsPage() {
       .filter(([, v]) => v)
       .map(([student_id, score]) => ({ student_id, score: parseInt(score) }));
     await api.setScores(selectedLesson, scoreList);
+    qc.invalidateQueries({ queryKey: ["lesson-scores", selectedLesson] });
     alert("Notlar kaydedildi");
   };
+
+  const attendanceSummary = savedAttendance?.length ?? 0;
 
   return (
     <AuthGuard role="superadmin">
@@ -48,7 +120,14 @@ export default function AdminLessonsPage() {
         <PageHeader title="Dersler" subtitle="Ders, yoklama ve not yönetimi" />
 
         <Card className="mb-6">
-          <select className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm mb-4" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+          <select
+            className="w-full rounded-lg border border-zinc-300/70 bg-white/70 px-3 py-2 text-sm mb-4 dark:border-zinc-700/70 dark:bg-zinc-900/50"
+            value={groupId}
+            onChange={(e) => {
+              setGroupId(e.target.value);
+              setSelectedLesson("");
+            }}
+          >
             <option value="">Grup seç</option>
             {(groups as { id: string; group_name: string }[] | undefined)?.map((g) => (
               <option key={g.id} value={g.id}>{g.group_name}</option>
@@ -56,76 +135,115 @@ export default function AdminLessonsPage() {
           </select>
 
           {groupId && (
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Input placeholder="Ders başlığı" value={form.lesson_title} onChange={(e) => setForm({ ...form, lesson_title: e.target.value })} />
               <Input type="date" value={form.lesson_date} onChange={(e) => setForm({ ...form, lesson_date: e.target.value })} />
+              <Input type="time" label="Başlangıç saati" value={form.lesson_time} onChange={(e) => setForm({ ...form, lesson_time: e.target.value })} />
               <Input placeholder="Notlar" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              <Button onClick={create}>Ders Oluştur</Button>
+              <Button onClick={create} className="self-end">Ders Oluştur</Button>
             </div>
           )}
         </Card>
 
-        {isLoading ? <LoadingSpinner /> : lessons && lessons.length > 0 && (
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : lessons && lessons.length > 0 ? (
           <>
             <Card className="mb-6">
               <h3 className="font-semibold mb-3">Dersler</h3>
               <div className="space-y-2">
-                {(lessons as { id: string; lesson_title: string; lesson_date: string }[]).map((l) => (
+                {lessons.map((l) => (
                   <button
                     key={l.id}
                     onClick={() => setSelectedLesson(l.id)}
-                    className={`w-full text-left rounded-lg p-3 text-sm ${selectedLesson === l.id ? "bg-amber-50 dark:bg-amber-950 border border-amber-200" : "bg-zinc-50 dark:bg-zinc-800"}`}
+                    className={`w-full text-left rounded-lg p-3 text-sm transition ${selectedLesson === l.id ? "bg-amber-500/15 border border-amber-300/50" : "bg-zinc-500/5 hover:bg-zinc-500/10"}`}
                   >
-                    {l.lesson_title} — {new Date(l.lesson_date).toLocaleDateString("tr-TR")}
+                    <span className="font-medium">{l.lesson_title}</span>
+                    <span className="text-zinc-500"> — {formatLessonWhen(l)}</span>
                   </button>
                 ))}
               </div>
             </Card>
 
-            {selectedLesson && users && (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
-                  <h3 className="font-semibold mb-3">Yoklama</h3>
-                  {users.map((u) => (
-                    <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-zinc-800">
-                      <span className="text-sm">{u.full_name}</span>
-                      <select
-                        className="rounded border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-sm"
-                        value={attendance[u.id] || ""}
-                        onChange={(e) => setAttendance({ ...attendance, [u.id]: e.target.value })}
-                      >
-                        <option value="">—</option>
-                        <option value="present">Katıldı</option>
-                        <option value="absent">Katılmadı</option>
-                        <option value="late">Geç</option>
-                        <option value="excused">Mazeret</option>
-                      </select>
+            {selectedLesson && students.length > 0 && (
+              <>
+                {savedAttendance && savedAttendance.length > 0 && (
+                  <Card className="mb-4">
+                    <h3 className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                      <CheckCircle2 size={16} className="text-green-500" />
+                      Kayıtlı yoklama ({attendanceSummary}/{students.length})
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {savedAttendance.map((row) => (
+                        <span key={row.student_id} className="rounded-full bg-zinc-500/10 px-2.5 py-1 text-xs">
+                          {row.profiles?.full_name ?? "?"}: {statusLabels[row.status] ?? row.status}
+                        </span>
+                      ))}
                     </div>
-                  ))}
-                  <Button className="mt-4" onClick={submitAttendance}>Yoklamayı Kaydet</Button>
-                </Card>
+                  </Card>
+                )}
 
-                <Card>
-                  <h3 className="font-semibold mb-3">Notlar (1-12)</h3>
-                  {users.map((u) => (
-                    <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-zinc-800">
-                      <span className="text-sm">{u.full_name}</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={12}
-                        className="w-16 rounded border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-sm"
-                        value={scores[u.id] || ""}
-                        onChange={(e) => setScores({ ...scores, [u.id]: e.target.value })}
-                      />
-                    </div>
-                  ))}
-                  <Button className="mt-4" onClick={submitScores}>Notları Kaydet</Button>
-                </Card>
-              </div>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <Card>
+                    <h3 className="font-semibold mb-1 flex items-center gap-2">
+                      <Users size={16} /> Yoklama
+                    </h3>
+                    <p className="text-xs text-zinc-500 mb-3">Grup öğrencileri ({students.length})</p>
+                    {loadingAttendance ? (
+                      <LoadingSpinner />
+                    ) : (
+                      students.map((u) => (
+                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10">
+                          <span className="text-sm">{u.full_name}</span>
+                          <select
+                            className="rounded border border-zinc-300/70 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700/70 dark:bg-zinc-900/50"
+                            value={attendance[u.id] || ""}
+                            onChange={(e) => setAttendance({ ...attendance, [u.id]: e.target.value })}
+                          >
+                            <option value="">—</option>
+                            <option value="present">Katıldı</option>
+                            <option value="absent">Katılmadı</option>
+                            <option value="late">Geç</option>
+                            <option value="excused">Mazeret</option>
+                          </select>
+                        </div>
+                      ))
+                    )}
+                    <Button className="mt-4" onClick={submitAttendance}>Yoklamayı Kaydet</Button>
+                  </Card>
+
+                  <Card>
+                    <h3 className="font-semibold mb-3">Notlar (1-12)</h3>
+                    {loadingScores ? (
+                      <LoadingSpinner />
+                    ) : (
+                      students.map((u) => (
+                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10">
+                          <span className="text-sm">{u.full_name}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={12}
+                            className="w-16 rounded border border-zinc-300/70 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700/70 dark:bg-zinc-900/50"
+                            value={scores[u.id] || ""}
+                            onChange={(e) => setScores({ ...scores, [u.id]: e.target.value })}
+                          />
+                        </div>
+                      ))
+                    )}
+                    <Button className="mt-4" onClick={submitScores}>Notları Kaydet</Button>
+                  </Card>
+                </div>
+              </>
+            )}
+
+            {selectedLesson && students.length === 0 && (
+              <Card><p className="text-zinc-500 text-sm">Bu grupta henüz öğrenci yok. Önce gruba öğrenci ekle.</p></Card>
             )}
           </>
-        )}
+        ) : groupId ? (
+          <Card><p className="text-zinc-500">Bu grupta henüz ders yok</p></Card>
+        ) : null}
       </AppLayout>
     </AuthGuard>
   );

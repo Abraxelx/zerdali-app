@@ -66,6 +66,12 @@ export const api = {
 
   me: () => apiFetch<Profile>("/auth/me"),
 
+  getNotifications: () => apiFetch<unknown[]>("/notifications"),
+  markNotificationRead: (id: string) =>
+    apiFetch(`/notifications/${id}/read`, { method: "POST" }),
+  markAllNotificationsRead: () =>
+    apiFetch("/notifications/read-all", { method: "POST" }),
+
   // Student
   getPoints: () => apiFetch<{ total_zerdalyum: number; recent_transactions: unknown[] }>("/student/points"),
   getLevel: () =>
@@ -119,11 +125,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ records }),
     }),
+  getAdminLessonAttendance: (lessonId: string) =>
+    apiFetch<unknown[]>(`/admin/lessons/${lessonId}/attendance`),
   setScores: (lessonId: string, scores: unknown[]) =>
     apiFetch(`/admin/lessons/${lessonId}/scores`, {
       method: "POST",
       body: JSON.stringify({ scores }),
     }),
+  getAdminLessonScores: (lessonId: string) =>
+    apiFetch<unknown[]>(`/admin/lessons/${lessonId}/scores`),
   getAdminAssignments: (lessonId?: string) =>
     apiFetch<unknown[]>(`/admin/assignments${lessonId ? `?lesson_id=${lessonId}` : ""}`),
   createAssignment: (body: FormData) =>

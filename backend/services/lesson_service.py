@@ -1,7 +1,13 @@
 from utils.db_helpers import get_data
 from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin
-from services.group_service import get_student_groups
+from services.group_service import get_student_groups, get_group_members
+
+
+def _lesson_group_student_ids(lesson_id: str) -> set[str]:
+    lesson = get_lesson(lesson_id)
+    members = get_group_members(lesson["group_id"])
+    return {m["student_id"] for m in members}
 
 
 def create_lesson(data: dict) -> dict:
@@ -11,15 +17,27 @@ def create_lesson(data: dict) -> dict:
             raise APIError(f"{field} is required", 422)
 
     db = get_supabase_admin()
-    result = db.table("lessons").insert(
-        {
-            "group_id": data["group_id"],
-            "lesson_title": data["lesson_title"],
-            "lesson_date": data["lesson_date"],
-            "notes": data.get("notes"),
-        }
-    ).execute()
-    return result.data[0]
+    payload = {
+        "group_id": data["group_id"],
+        "lesson_title": data["lesson_title"],
+        "lesson_date": data["lesson_date"],
+        "notes": data.get("notes"),
+    }
+    if data.get("lesson_time"):
+        payload["lesson_time"] = data["lesson_time"]
+
+    result = db.table("lessons").insert(payload).execute()
+    lesson = result.data[0]
+
+    time_label = f" saat {data['lesson_time']}" if data.get("lesson_time") else ""
+    from services.notification_service import notify_group_students
+    notify_group_students(
+        data["group_id"],
+        "LESSON_CREATED",
+        "Yeni ders",
+        f'"{data["lesson_title"]}" dersi eklendi{time_label}.',
+    )
+    return lesson
 
 
 def list_lessons(group_id: str | None = None) -> list:
@@ -41,7 +59,7 @@ def get_lesson(lesson_id: str) -> dict:
 
 
 def update_lesson(lesson_id: str, data: dict) -> dict:
-    allowed = {"lesson_title", "lesson_date", "notes", "group_id"}
+    allowed = {"lesson_title", "lesson_date", "lesson_time", "notes", "group_id"}
     update_data = {k: v for k, v in data.items() if k in allowed}
     if not update_data:
         raise APIError("No valid fields to update", 422)
@@ -70,6 +88,7 @@ def mark_attendance(lesson_id: str, records: list) -> list:
         raise APIError("Attendance records required", 422)
 
     valid_statuses = {"present", "absent", "late", "excused"}
+    allowed_students = _lesson_group_student_ids(lesson_id)
     db = get_supabase_admin()
     results = []
 
@@ -78,6 +97,8 @@ def mark_attendance(lesson_id: str, records: list) -> list:
         status = record.get("status")
         if not student_id or status not in valid_statuses:
             raise APIError("Each record needs student_id and valid status", 422)
+        if student_id not in allowed_students:
+            raise APIError("Öğrenci bu dersin grubunda değil", 422)
 
         existing = (
             db.table("attendance")
@@ -129,7 +150,7 @@ def get_student_attendance(student_id: str) -> list:
     db = get_supabase_admin()
     result = (
         db.table("attendance")
-        .select("*, lessons(id, lesson_title, lesson_date)")
+        .select("*, lessons(id, lesson_title, lesson_date, lesson_time)")
         .eq("student_id", student_id)
         .order("lesson_id")
         .execute()
@@ -144,6 +165,7 @@ def set_lesson_scores(lesson_id: str, scores: list) -> list:
 
     db = get_supabase_admin()
     results = []
+    allowed_students = _lesson_group_student_ids(lesson_id)
 
     for entry in scores:
         student_id = entry.get("student_id")
@@ -152,6 +174,8 @@ def set_lesson_scores(lesson_id: str, scores: list) -> list:
 
         if not student_id or score is None:
             raise APIError("Each entry needs student_id and score", 422)
+        if student_id not in allowed_students:
+            raise APIError("Öğrenci bu dersin grubunda değil", 422)
         if not (1 <= int(score) <= 12):
             raise APIError("Score must be between 1 and 12", 422)
 
@@ -200,7 +224,7 @@ def get_student_scores(student_id: str) -> list:
     db = get_supabase_admin()
     result = (
         db.table("lesson_scores")
-        .select("*, lessons(id, lesson_title, lesson_date)")
+        .select("*, lessons(id, lesson_title, lesson_date, lesson_time)")
         .eq("student_id", student_id)
         .execute()
     )
