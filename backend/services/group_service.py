@@ -6,6 +6,21 @@ from utils.group_fields import parse_lesson_day, parse_lesson_hour
 from utils.supabase_client import get_supabase_admin
 
 
+def normalize_group_id(group_id) -> str:
+    """Grup id bigint/string karışımını tek forma çevirir."""
+    if group_id is None:
+        return ""
+    return str(group_id).strip()
+
+
+def coerce_group_id(group_id):
+    """DB sorguları için bigint uyumlu id."""
+    normalized = normalize_group_id(group_id)
+    if normalized.isdigit():
+        return int(normalized)
+    return normalized
+
+
 def _insert_group(payload: dict) -> dict:
     db = get_supabase_admin()
     try:

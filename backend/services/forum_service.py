@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from services.group_service import get_group, get_student_groups, list_groups
+from services.group_service import coerce_group_id, get_group, get_student_groups, list_groups, normalize_group_id
 from utils.db_helpers import get_data
 from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin
@@ -26,37 +26,49 @@ def _fetch_profiles(user_ids: list[str]) -> dict:
     return {p["id"]: p for p in (result.data or [])}
 
 
-def _student_group_ids(student_id: str) -> list[str]:
+def _student_group_ids(student_id: str) -> set[str]:
     memberships = get_student_groups(student_id)
-    ids = []
+    ids: set[str] = set()
     for m in memberships:
         gid = m.get("group_id") or (m.get("student_groups") or {}).get("id")
-        if gid:
-            ids.append(gid)
+        if gid is not None:
+            ids.add(normalize_group_id(gid))
     return ids
 
 
-def assert_group_access(user_id: str, role: str, group_id: str) -> None:
-    if not group_id:
+def assert_group_access(user_id: str, role: str, group_id) -> None:
+    gid = normalize_group_id(group_id)
+    if not gid:
         raise APIError("group_id is required", 422)
     if role == "superadmin":
-        get_group(group_id)
+        get_group(gid)
         return
-    if group_id not in _student_group_ids(user_id):
+    if gid not in _student_group_ids(user_id):
         raise APIError("Bu sınıf forumuna erişimin yok", 403)
 
 
 def list_accessible_groups(user_id: str, role: str) -> list:
     if role == "superadmin":
         return list_groups(active_only=True)
+
     memberships = get_student_groups(user_id)
     groups = []
-    seen = set()
+    seen: set[str] = set()
+
     for m in memberships:
-        g = m.get("student_groups")
-        if g and g.get("id") and g["id"] not in seen:
-            groups.append(g)
-            seen.add(g["id"])
+        embedded = m.get("student_groups")
+        gid = m.get("group_id") or (embedded or {}).get("id")
+        if gid is None:
+            continue
+        key = normalize_group_id(gid)
+        if key in seen:
+            continue
+        if embedded and embedded.get("id") is not None:
+            groups.append(embedded)
+        else:
+            groups.append(get_group(gid))
+        seen.add(key)
+
     return groups
 
 
@@ -82,13 +94,14 @@ def get_topic_quota(user_id: str, role: str) -> dict:
     return {"can_create": remaining > 0, "remaining_today": remaining, "limit_per_day": 1}
 
 
-def list_topics(group_id: str, user_id: str, role: str) -> list:
-    assert_group_access(user_id, role, group_id)
+def list_topics(group_id, user_id: str, role: str) -> list:
+    gid = coerce_group_id(group_id)
+    assert_group_access(user_id, role, gid)
     db = get_supabase_admin()
     result = (
         db.table("forum_topics")
         .select("*")
-        .eq("group_id", group_id)
+        .eq("group_id", gid)
         .order("created_at", desc=True)
         .execute()
     )
@@ -106,7 +119,7 @@ def list_topics(group_id: str, user_id: str, role: str) -> list:
         tid = row["topic_id"]
         count_map[tid] = count_map.get(tid, 0) + 1
 
-    group = get_group(group_id)
+    group = get_group(gid)
     return [
         {
             **topic,
@@ -152,8 +165,9 @@ def get_topic(topic_id: str, user_id: str, role: str) -> dict:
     }
 
 
-def create_topic(group_id: str, author_id: str, role: str, data: dict) -> dict:
-    assert_group_access(author_id, role, group_id)
+def create_topic(group_id, author_id: str, role: str, data: dict) -> dict:
+    gid = coerce_group_id(group_id)
+    assert_group_access(author_id, role, gid)
 
     title = (data.get("title") or "").strip()
     body = (data.get("body") or "").strip()
@@ -170,7 +184,7 @@ def create_topic(group_id: str, author_id: str, role: str, data: dict) -> dict:
     db = get_supabase_admin()
     result = (
         db.table("forum_topics")
-        .insert({"group_id": group_id, "author_id": author_id, "title": title, "body": body})
+        .insert({"group_id": gid, "author_id": author_id, "title": title, "body": body})
         .execute()
     )
     if not result.data:
@@ -178,7 +192,7 @@ def create_topic(group_id: str, author_id: str, role: str, data: dict) -> dict:
 
     topic = result.data[0]
     profiles = _fetch_profiles([author_id])
-    group = get_group(group_id)
+    group = get_group(gid)
     return {
         **topic,
         "author": profiles.get(author_id),

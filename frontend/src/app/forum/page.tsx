@@ -7,7 +7,7 @@ import { MessageSquare, Plus, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, Input, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { api, ForumGroup, ForumTopic } from "@/lib/api";
+import { api, ForumGroup, ForumTopic, normalizeGroupId } from "@/lib/api";
 import { showApiError, useMessage } from "@/lib/messages";
 import { QUERY_STALE } from "@/lib/query-config";
 
@@ -44,15 +44,23 @@ export default function ForumPage() {
 
   useEffect(() => {
     if (!groups?.length || selectedGroupId) return;
-    setSelectedGroupId(groups[0].id);
+    setSelectedGroupId(normalizeGroupId(groups[0].id));
   }, [groups, selectedGroupId]);
 
   const selectedGroup = useMemo(
-    () => (groups as ForumGroup[] | undefined)?.find((g) => g.id === selectedGroupId),
+    () =>
+      (groups as ForumGroup[] | undefined)?.find(
+        (g) => normalizeGroupId(g.id) === selectedGroupId
+      ),
     [groups, selectedGroupId]
   );
 
-  const { data: topics, isLoading: loadingTopics } = useQuery({
+  const {
+    data: topics,
+    isLoading: loadingTopics,
+    isError: topicsError,
+    error: topicsLoadError,
+  } = useQuery({
     queryKey: ["forum-topics", selectedGroupId],
     queryFn: () => api.getForumTopics(selectedGroupId),
     enabled: !!selectedGroupId,
@@ -143,7 +151,7 @@ export default function ForumPage() {
             }}
           >
             {(groups as ForumGroup[]).map((g) => (
-              <option key={g.id} value={g.id}>
+              <option key={normalizeGroupId(g.id)} value={normalizeGroupId(g.id)}>
                 {g.group_name}
               </option>
             ))}
@@ -198,6 +206,13 @@ export default function ForumPage() {
 
       {loadingTopics ? (
         <LoadingSpinner />
+      ) : topicsError ? (
+        <Card>
+          <p className="text-center text-red-500 py-8 text-sm">
+            Konular yüklenemedi.{" "}
+            {topicsLoadError instanceof Error ? topicsLoadError.message : "Tekrar dene."}
+          </p>
+        </Card>
       ) : topics && topics.length > 0 ? (
         <div className="space-y-3">
           {(topics as ForumTopic[]).map((topic) => (

@@ -71,6 +71,27 @@ def test_assert_group_access_student_denied(mock_groups):
     assert exc.value.status_code == 403
 
 
+@patch("services.forum_service.get_student_groups")
+def test_assert_group_access_student_int_group_id(mock_groups):
+    from services.forum_service import assert_group_access
+
+    mock_groups.return_value = [{"group_id": 42}]
+    assert_group_access("student-1", "student", "42")
+
+
+@patch("services.forum_service.get_group")
+@patch("services.forum_service.get_student_groups")
+def test_list_accessible_groups_fallback_without_embed(mock_groups, mock_get_group):
+    from services.forum_service import list_accessible_groups
+
+    mock_groups.return_value = [{"group_id": 7, "student_groups": None}]
+    mock_get_group.return_value = {"id": 7, "group_name": "Zerdali"}
+    groups = list_accessible_groups("student-1", "student")
+    assert len(groups) == 1
+    assert groups[0]["group_name"] == "Zerdali"
+    mock_get_group.assert_called_once_with(7)
+
+
 @patch("services.forum_service.get_group")
 def test_assert_group_access_admin(mock_get_group):
     from services.forum_service import assert_group_access

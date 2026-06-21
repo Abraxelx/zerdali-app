@@ -74,12 +74,18 @@ export type ForumTopic = {
 };
 
 export type ForumGroup = {
-  id: string;
+  id: string | number;
   group_name: string;
   lesson_day?: number;
   lesson_hour?: number | string;
   is_active?: boolean;
 };
+
+/** Grup id bigint/string karışımını URL ve select için normalize eder. */
+export function normalizeGroupId(id: string | number | undefined | null): string {
+  if (id === undefined || id === null) return "";
+  return String(id);
+}
 
 export type ForumComment = {
   id: string;
@@ -255,12 +261,13 @@ export const api = {
     apiFetch(`/admin/students/${studentId}/meblahs/${recordId}`, { method: "DELETE" }),
 
   getForumGroups: () => apiFetch<ForumGroup[]>("/forum/groups"),
-  getForumTopics: (groupId: string) => apiFetch<ForumTopic[]>(`/forum/groups/${groupId}/topics`),
+  getForumTopics: (groupId: string | number) =>
+    apiFetch<ForumTopic[]>(`/forum/groups/${normalizeGroupId(groupId)}/topics`),
   getForumQuota: () =>
     apiFetch<{ can_create: boolean; remaining_today: number | null; limit_per_day: number | null }>("/forum/quota"),
   getForumTopic: (id: string) => apiFetch<ForumTopicDetail>(`/forum/topics/${id}`),
-  createForumTopic: (groupId: string, body: { title: string; body: string }) =>
-    apiFetch<ForumTopic>(`/forum/groups/${groupId}/topics`, { method: "POST", body: JSON.stringify(body) }),
+  createForumTopic: (groupId: string | number, body: { title: string; body: string }) =>
+    apiFetch<ForumTopic>(`/forum/groups/${normalizeGroupId(groupId)}/topics`, { method: "POST", body: JSON.stringify(body) }),
   createForumComment: (topicId: string, body: string) =>
     apiFetch<ForumComment>(`/forum/topics/${topicId}/comments`, {
       method: "POST",
