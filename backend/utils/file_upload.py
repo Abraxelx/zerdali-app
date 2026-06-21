@@ -6,16 +6,18 @@ from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin
 
 
-def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in Config.ALLOWED_EXTENSIONS
+def allowed_file(filename: str, allowed: set | None = None) -> bool:
+    allowed = allowed or Config.ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed
 
 
-def upload_file(file, bucket: str, folder: str = "") -> str:
+def upload_file(file, bucket: str, folder: str = "", allowed: set | None = None) -> str:
+    allowed = allowed or Config.ALLOWED_EXTENSIONS
     if not file or not file.filename:
         raise APIError("No file provided", 400)
-    if not allowed_file(file.filename):
+    if not allowed_file(file.filename, allowed):
         raise APIError(
-            f"File type not allowed. Allowed: {', '.join(Config.ALLOWED_EXTENSIONS)}",
+            f"Dosya türüne izin verilmiyor. İzinli türler: {', '.join(sorted(allowed))}",
             422,
         )
 

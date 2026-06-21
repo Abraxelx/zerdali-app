@@ -73,7 +73,12 @@ export default function AdminAssignmentsPage() {
             <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
               <Paperclip size={15} />
               <span className="truncate">{file?.name ?? "Ödev dosyası ekle (opsiyonel)"}</span>
-              <input type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.rar,.png,.jpg,.jpeg,.webp"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
             </label>
           </div>
           <Button className="mt-4" onClick={create} disabled={creating}>{creating ? "Oluşturuluyor..." : "Ödev Oluştur"}</Button>
