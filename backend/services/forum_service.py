@@ -207,12 +207,25 @@ def create_comment(topic_id: str, author_id: str, role: str, data: dict) -> dict
         raise APIError("Yorum metni gerekli", 422)
 
     db = get_supabase_admin()
-    topic_row = db.table("forum_topics").select("id, group_id").eq("id", topic_id).maybe_single().execute()
+    topic_row = (
+        db.table("forum_topics")
+        .select("id, group_id, author_id, title")
+        .eq("id", topic_id)
+        .maybe_single()
+        .execute()
+    )
     topic = get_data(topic_row)
     if not topic:
         raise APIError("Topic not found", 404)
 
     assert_group_access(author_id, role, topic["group_id"])
+
+    prior_res = db.table("forum_comments").select("author_id").eq("topic_id", topic_id).execute()
+    prior_commenters = {
+        row["author_id"]
+        for row in (prior_res.data or [])
+        if row.get("author_id") and row["author_id"] != author_id
+    }
 
     result = (
         db.table("forum_comments")
@@ -224,4 +237,25 @@ def create_comment(topic_id: str, author_id: str, role: str, data: dict) -> dict
 
     comment = result.data[0]
     profiles = _fetch_profiles([author_id])
-    return {**comment, "author": profiles.get(author_id)}
+    commenter = profiles.get(author_id)
+    _notify_forum_comment(topic, author_id, prior_commenters, commenter)
+
+    return {**comment, "author": commenter}
+
+
+def _notify_forum_comment(topic: dict, commenter_id: str, prior_commenters: set[str], commenter: dict | None) -> None:
+    recipients: set[str] = set(prior_commenters)
+    if topic.get("author_id") and topic["author_id"] != commenter_id:
+        recipients.add(topic["author_id"])
+    recipients.discard(commenter_id)
+    if not recipients:
+        return
+
+    from services.notification_service import notify_user
+
+    name = (commenter or {}).get("full_name") or "Birisi"
+    title = topic.get("title") or "Forum konusu"
+    message = f'{name} "{title}" konusuna yorum yaptı.'
+
+    for user_id in recipients:
+        notify_user(user_id, "FORUM_COMMENT", "Forum yorumu", message)
