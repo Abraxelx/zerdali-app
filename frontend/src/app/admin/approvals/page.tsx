@@ -6,6 +6,7 @@ import { CheckCircle2, FileDown, XCircle } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, LoadingSpinner, PageHeader, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 type PendingSubmission = {
   id: string;
@@ -18,6 +19,7 @@ type PendingSubmission = {
 };
 
 export default function AdminApprovalsPage() {
+  const msg = useMessage();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["pending-submissions"],
@@ -29,16 +31,17 @@ export default function AdminApprovalsPage() {
   const review = useMutation({
     mutationFn: ({ id, action, score, fb }: { id: string; action: "approve" | "reject"; score?: number; fb?: string }) =>
       api.reviewSubmission(id, action, score, fb),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["pending-submissions"] });
+      msg.success(vars.action === "approve" ? "Ödev onaylandı" : "Ödev reddedildi");
     },
-    onError: (e) => alert(e instanceof Error ? e.message : "İşlem başarısız"),
+    onError: (e) => showApiError(msg, e, "İşlem başarısız"),
   });
 
   const approve = (id: string) => {
     const score = parseInt(scores[id]);
     if (isNaN(score)) {
-      alert("Onaylamak için puan gir (örn. 8)");
+      msg.error("Puan gerekli", "Onaylamak için 0–100 arası bir puan gir (örn. 8).");
       return;
     }
     review.mutate({ id, action: "approve", score, fb: feedback[id] });

@@ -66,8 +66,9 @@ def update_meblah_type(meblah_id: str, data: dict) -> dict:
 
 def grant_meblah(student_id: str, meblah_type_id: str) -> dict:
     db = get_supabase_admin()
-    mt = db.table("meblah_types").select("id").eq("id", meblah_type_id).maybe_single().execute()
-    if not get_data(mt):
+    mt = db.table("meblah_types").select("id, name, rarity").eq("id", meblah_type_id).maybe_single().execute()
+    mt_data = get_data(mt)
+    if not mt_data:
         raise APIError("Meblah type not found", 404)
 
     result = db.table("student_meblahs").insert(
@@ -75,6 +76,14 @@ def grant_meblah(student_id: str, meblah_type_id: str) -> dict:
     ).execute()
 
     log_event("MEBLAH_EARNED", student_id, {"meblah_type_id": meblah_type_id})
+
+    from services.notification_service import notify_user
+    notify_user(
+        student_id,
+        "MEBLAH_EARNED",
+        "Yeni meblağ kazandın!",
+        f'"{mt_data["name"]}" meblağı hesabına eklendi.',
+    )
     return result.data[0]
 
 

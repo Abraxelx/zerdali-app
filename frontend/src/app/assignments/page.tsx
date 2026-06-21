@@ -6,6 +6,7 @@ import { CalendarClock, FileDown, Paperclip } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, LoadingSpinner, PageHeader, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 type Submission = {
   status: string;
@@ -33,6 +34,7 @@ function dueInfo(due: string) {
 }
 
 export default function AssignmentsPage() {
+  const msg = useMessage();
   const { data, isLoading } = useQuery({ queryKey: ["assignments"], queryFn: () => api.getAssignments() as Promise<Assignment[]> });
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [text, setText] = useState<Record<string, string>>({});
@@ -40,21 +42,27 @@ export default function AssignmentsPage() {
   const qc = useQueryClient();
 
   const handleSubmit = async (id: string) => {
-    const form = new FormData();
-    if (text[id]) form.append("submission_text", text[id]);
-    if (files[id]) form.append("file", files[id] as File);
-    if (!text[id] && !files[id]) {
-      alert("Teslim metni veya dosya ekle");
+    const trimmed = (text[id] || "").trim();
+    const file = files[id];
+
+    if (!trimmed && !file) {
+      msg.error("Teslim edilemedi", "En az bir teslim metni veya dosya eklemelisin.");
       return;
     }
+
+    const form = new FormData();
+    if (trimmed) form.append("submission_text", trimmed);
+    if (file) form.append("file", file);
+
     setSubmitting(id);
     try {
       await api.submitAssignment(id, form);
       qc.invalidateQueries({ queryKey: ["assignments"] });
       setText({ ...text, [id]: "" });
       setFiles({ ...files, [id]: null });
+      msg.success("Ödev teslim edildi", "Öğretmen onayından sonra puanın yansıyacak.");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Teslim başarısız");
+      showApiError(msg, err, "Teslim başarısız");
     } finally {
       setSubmitting(null);
     }
@@ -63,7 +71,7 @@ export default function AssignmentsPage() {
   return (
     <AuthGuard role="student">
       <AppLayout variant="student">
-        <PageHeader title="Ödevler" subtitle="Her ödevi yalnızca bir kez teslim edebilirsin" />
+        <PageHeader title="Ödevler" subtitle="Metin veya dosya ile teslim edebilirsin — ikisi de opsiyonel değil, en az biri gerekli" />
         {isLoading ? (
           <LoadingSpinner />
         ) : data && data.length > 0 ? (
@@ -111,14 +119,14 @@ export default function AssignmentsPage() {
                     <div className="mt-4 space-y-2">
                       <textarea
                         className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                        placeholder="Teslim metni..."
+                        placeholder="Teslim metni (opsiyonel — dosya varsa boş bırakabilirsin)"
                         rows={3}
                         value={text[a.id] || ""}
                         onChange={(e) => setText({ ...text, [a.id]: e.target.value })}
                       />
                       <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                         <Paperclip size={15} />
-                        <span>{files[a.id]?.name ?? "Dosya ekle (opsiyonel)"}</span>
+                        <span>{files[a.id]?.name ?? "Dosya ekle (PDF, Word, zip…)"}</span>
                         <input
                           type="file"
                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.rar,.png,.jpg,.jpeg,.webp"
@@ -129,7 +137,7 @@ export default function AssignmentsPage() {
                       <Button onClick={() => handleSubmit(a.id)} disabled={submitting === a.id}>
                         {submitting === a.id ? "Gönderiliyor..." : "Teslim Et"}
                       </Button>
-                      <p className="text-xs text-zinc-400">Dikkat: Tek teslim hakkın var.</p>
+                      <p className="text-xs text-zinc-400">Tek teslim hakkın var. Metin veya dosyadan en az biri zorunlu.</p>
                     </div>
                   )}
                 </Card>

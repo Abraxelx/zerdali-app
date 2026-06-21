@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { useNotifications } from "@/lib/notifications";
+import { NotificationBell } from "@/lib/notifications";
 
 const studentLinks = [
   { href: "/dashboard", label: "Panel" },
@@ -32,7 +32,6 @@ const adminLinks = [
 
 export function AppLayout({ children, variant }: { children: React.ReactNode; variant: "student" | "admin" }) {
   const { user, logout } = useAuth();
-  const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const links = variant === "admin" ? adminLinks : studentLinks;
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -59,11 +58,7 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
           </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {unreadCount > 0 && (
-              <span className="hidden sm:inline-flex items-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-semibold text-white" title="Okunmamış bildirim">
-                {unreadCount}
-              </span>
-            )}
+            <NotificationBell />
             {user?.profile_photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.profile_photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />

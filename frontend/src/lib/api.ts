@@ -1,5 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+import { ApiError, friendlyApiMessage } from "./messages";
+export { ApiError, friendlyApiMessage };
+
 export type Profile = {
   id: string;
   email: string;
@@ -41,7 +44,10 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+  if (!res.ok) {
+    const raw = (data as { error?: string }).error || friendlyApiMessage(res.status, "");
+    throw new ApiError(res.status, raw);
+  }
   return data as T;
 }
 

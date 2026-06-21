@@ -6,6 +6,7 @@ import { CalendarClock, Paperclip } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, Input, LoadingSpinner, PageHeader, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 type Submission = {
   id: string;
@@ -17,6 +18,7 @@ type Submission = {
 };
 
 export default function AdminAssignmentsPage() {
+  const msg = useMessage();
   const { data: lessons } = useQuery({ queryKey: ["admin-lessons-all"], queryFn: () => api.getAdminLessons() });
   const { data: assignments, isLoading } = useQuery({ queryKey: ["admin-assignments"], queryFn: () => api.getAdminAssignments() });
   const [form, setForm] = useState({ lesson_id: "", title: "", description: "" });
@@ -32,7 +34,7 @@ export default function AdminAssignmentsPage() {
 
   const create = async () => {
     if (!form.lesson_id || !form.title) {
-      alert("Ders ve başlık zorunlu");
+      msg.error("Eksik bilgi", "Ders ve başlık zorunlu.");
       return;
     }
     setCreating(true);
@@ -44,8 +46,9 @@ export default function AdminAssignmentsPage() {
       setForm({ lesson_id: "", title: "", description: "" });
       setFile(null);
       qc.invalidateQueries({ queryKey: ["admin-assignments"] });
+      msg.success("Ödev oluşturuldu", "Öğrencilere bildirim gitti.");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Oluşturulamadı");
+      showApiError(msg, e, "Ödev oluşturulamadı");
     } finally {
       setCreating(false);
     }

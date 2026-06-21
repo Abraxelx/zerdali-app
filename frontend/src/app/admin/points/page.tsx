@@ -5,23 +5,27 @@ import { useState } from "react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, Input, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 export default function AdminPointsPage() {
+  const msg = useMessage();
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => api.getUsers("student") });
   const [studentId, setStudentId] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [message, setMessage] = useState("");
 
   const grant = async () => {
-    if (!studentId || !amount) return;
+    if (!studentId || !amount) {
+      msg.error("Eksik bilgi", "Öğrenci ve miktar seç.");
+      return;
+    }
     try {
       await api.grantPoints(studentId, parseInt(amount), description || "Admin bonus");
-      setMessage(`${amount} Zerdalyum verildi!`);
+      msg.success(`${amount} Zerdalyum verildi`, "Öğrenciye bildirim gitti.");
       setAmount("");
       setDescription("");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Hata");
+      showApiError(msg, err, "Puan verilemedi");
     }
   };
 
@@ -40,7 +44,6 @@ export default function AdminPointsPage() {
             </label>
             <Input label="Miktar" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
             <Input label="Açıklama" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Admin bonus" />
-            {message && <p className="text-sm text-amber-500 animate-point-pop">{message}</p>}
             <Button onClick={grant}>Puan Ver</Button>
           </div>
         </Card>

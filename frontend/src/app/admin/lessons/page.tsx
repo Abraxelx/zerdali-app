@@ -6,6 +6,7 @@ import { CheckCircle2, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, Input, LoadingSpinner, PageHeader } from "@/components/ui";
 import { api, GroupMember } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 type Lesson = { id: string; lesson_title: string; lesson_date: string; lesson_time?: string };
 type AttendanceRow = { student_id: string; status: string; profiles?: { full_name: string } };
@@ -24,6 +25,7 @@ function formatLessonWhen(lesson: Lesson) {
 }
 
 export default function AdminLessonsPage() {
+  const msg = useMessage();
   const { data: groups } = useQuery({ queryKey: ["admin-groups"], queryFn: api.getAdminGroups });
   const [groupId, setGroupId] = useState("");
   const { data: members } = useQuery({
@@ -80,14 +82,22 @@ export default function AdminLessonsPage() {
   }, [savedScores]);
 
   const create = async () => {
-    if (!groupId || !form.lesson_title || !form.lesson_date) return;
-    await api.createLesson({
-      ...form,
-      group_id: groupId,
-      ...(form.lesson_time ? { lesson_time: form.lesson_time } : {}),
-    });
-    setForm({ lesson_title: "", lesson_date: "", lesson_time: "", notes: "" });
-    qc.invalidateQueries({ queryKey: ["admin-lessons"] });
+    if (!groupId || !form.lesson_title || !form.lesson_date) {
+      msg.error("Eksik bilgi", "Grup, ders adı ve tarih zorunlu.");
+      return;
+    }
+    try {
+      await api.createLesson({
+        ...form,
+        group_id: groupId,
+        ...(form.lesson_time ? { lesson_time: form.lesson_time } : {}),
+      });
+      setForm({ lesson_title: "", lesson_date: "", lesson_time: "", notes: "" });
+      qc.invalidateQueries({ queryKey: ["admin-lessons"] });
+      msg.success("Ders oluşturuldu");
+    } catch (e) {
+      showApiError(msg, e, "Ders oluşturulamadı");
+    }
   };
 
   const submitAttendance = async () => {
@@ -95,21 +105,29 @@ export default function AdminLessonsPage() {
       .filter(([, status]) => status)
       .map(([student_id, status]) => ({ student_id, status }));
     if (!records.length) {
-      alert("En az bir öğrenci için yoklama seç");
+      msg.error("Yoklama kaydedilemedi", "En az bir öğrenci için durum seç.");
       return;
     }
-    await api.markAttendance(selectedLesson, records);
-    qc.invalidateQueries({ queryKey: ["lesson-attendance", selectedLesson] });
-    alert("Yoklama kaydedildi");
+    try {
+      await api.markAttendance(selectedLesson, records);
+      qc.invalidateQueries({ queryKey: ["lesson-attendance", selectedLesson] });
+      msg.success("Yoklama kaydedildi");
+    } catch (e) {
+      showApiError(msg, e, "Yoklama kaydedilemedi");
+    }
   };
 
   const submitScores = async () => {
     const scoreList = Object.entries(scores)
       .filter(([, v]) => v)
       .map(([student_id, score]) => ({ student_id, score: parseInt(score) }));
-    await api.setScores(selectedLesson, scoreList);
-    qc.invalidateQueries({ queryKey: ["lesson-scores", selectedLesson] });
-    alert("Notlar kaydedildi");
+    try {
+      await api.setScores(selectedLesson, scoreList);
+      qc.invalidateQueries({ queryKey: ["lesson-scores", selectedLesson] });
+      msg.success("Notlar kaydedildi");
+    } catch (e) {
+      showApiError(msg, e, "Notlar kaydedilemedi");
+    }
   };
 
   const attendanceSummary = savedAttendance?.length ?? 0;

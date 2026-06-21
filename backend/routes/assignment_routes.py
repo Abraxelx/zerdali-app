@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from services import assignment_service
+from utils.request_helpers import parse_body_data
 from utils.security import get_current_user, require_auth, require_role
 
 assignment_bp = Blueprint("assignments", __name__)
@@ -9,7 +10,7 @@ assignment_bp = Blueprint("assignments", __name__)
 @assignment_bp.route("/admin/assignments", methods=["POST"])
 @require_role("superadmin")
 def create_assignment():
-    data = request.form.to_dict() if request.form else (request.get_json() or {})
+    data = parse_body_data()
     file = request.files.get("file")
     return jsonify(assignment_service.create_assignment(data, file)), 201
 
@@ -44,7 +45,7 @@ def student_assignment_detail(assignment_id):
 @require_auth
 def submit_assignment(assignment_id):
     user = get_current_user()
-    data = request.form.to_dict() if request.form else (request.get_json() or {})
+    data = parse_body_data()
     file = request.files.get("file")
     return jsonify(assignment_service.submit_assignment(assignment_id, user["id"], data, file)), 201
 

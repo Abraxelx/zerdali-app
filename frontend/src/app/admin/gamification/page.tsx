@@ -6,8 +6,10 @@ import { ImagePlus } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, IconBubble, Input, LoadingSpinner, PageHeader, RarityBadge } from "@/components/ui";
 import { api } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 function IconUploader({ current, onUploaded }: { current?: string | null; onUploaded: (url: string) => void }) {
+  const msg = useMessage();
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -16,8 +18,9 @@ function IconUploader({ current, onUploaded }: { current?: string | null; onUplo
     try {
       const res = await api.uploadIcon(file);
       onUploaded(res.url);
+      msg.success("Görsel yüklendi");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Yükleme başarısız");
+      showApiError(msg, e, "Yükleme başarısız");
     } finally {
       setBusy(false);
     }
@@ -47,6 +50,7 @@ type MeblahType = { id: string; name: string; rarity: string; zerdalyum_multipli
 type Level = { id: string; level_number: number; title: string; required_zerdalyum: number; icon_url?: string | null };
 
 export default function AdminGamificationPage() {
+  const msg = useMessage();
   const { data: meblahTypes, isLoading: lm } = useQuery({ queryKey: ["meblah-types"], queryFn: () => api.getMeblahTypes() as Promise<MeblahType[]> });
   const { data: levels, isLoading: ll } = useQuery({ queryKey: ["levels"], queryFn: () => api.getLevels() as Promise<Level[]> });
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => api.getUsers("student") });
@@ -77,9 +81,16 @@ export default function AdminGamificationPage() {
   };
 
   const grant = async () => {
-    if (!grantStudent || !grantMeblah) return;
-    await api.grantMeblah(grantStudent, grantMeblah);
-    alert("Meblağ verildi");
+    if (!grantStudent || !grantMeblah) {
+      msg.error("Eksik bilgi", "Öğrenci ve meblağ seç.");
+      return;
+    }
+    try {
+      await api.grantMeblah(grantStudent, grantMeblah);
+      msg.success("Meblağ verildi", "Öğrenciye bildirim gönderildi.");
+    } catch (e) {
+      showApiError(msg, e, "Meblağ verilemedi");
+    }
   };
 
   if (lm || ll) return (

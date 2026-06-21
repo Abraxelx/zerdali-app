@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, Input, LoadingSpinner, PageHeader } from "@/components/ui";
 import { api, GroupMember } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 const DAYS = [
   { value: "1", label: "Pazartesi" },
@@ -44,6 +45,7 @@ type Group = {
 };
 
 function GroupCard({ group }: { group: Group }) {
+  const msg = useMessage();
   const qc = useQueryClient();
   const { data: members, isLoading } = useQuery({
     queryKey: ["group-members", group.id],
@@ -51,8 +53,13 @@ function GroupCard({ group }: { group: Group }) {
   });
 
   const removeMember = async (studentId: string) => {
-    await api.removeMember(group.id, studentId);
-    qc.invalidateQueries({ queryKey: ["group-members", group.id] });
+    try {
+      await api.removeMember(group.id, studentId);
+      qc.invalidateQueries({ queryKey: ["group-members", group.id] });
+      msg.success("Öğrenci gruptan çıkarıldı");
+    } catch (e) {
+      showApiError(msg, e, "Öğrenci çıkarılamadı");
+    }
   };
 
   return (
@@ -99,36 +106,38 @@ function GroupCard({ group }: { group: Group }) {
 }
 
 export default function AdminGroupsPage() {
+  const msg = useMessage();
   const { data, isLoading } = useQuery({ queryKey: ["admin-groups"], queryFn: api.getAdminGroups });
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => api.getUsers("student") });
   const [form, setForm] = useState({ group_name: "", lesson_day: "", lesson_hour: "14:00" });
   const [memberGroup, setMemberGroup] = useState("");
   const [memberStudent, setMemberStudent] = useState("");
-  const [memberError, setMemberError] = useState("");
-  const [error, setError] = useState("");
   const qc = useQueryClient();
 
   const create = async () => {
-    setError("");
     try {
       await api.createGroup(form);
       setForm({ group_name: "", lesson_day: "", lesson_hour: "14:00" });
       qc.invalidateQueries({ queryKey: ["admin-groups"] });
+      msg.success("Grup oluşturuldu");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Grup oluşturulamadı");
+      showApiError(msg, err, "Grup oluşturulamadı");
     }
   };
 
   const addMember = async () => {
-    if (!memberGroup || !memberStudent) return;
-    setMemberError("");
+    if (!memberGroup || !memberStudent) {
+      msg.error("Eksik bilgi", "Grup ve öğrenci seç.");
+      return;
+    }
     try {
       await api.addMember(memberGroup, memberStudent);
       setMemberStudent("");
       qc.invalidateQueries({ queryKey: ["group-members", memberGroup] });
       qc.invalidateQueries({ queryKey: ["group-members"] });
+      msg.success("Öğrenci gruba eklendi");
     } catch (err) {
-      setMemberError(err instanceof Error ? err.message : "Öğrenci eklenemedi");
+      showApiError(msg, err, "Öğrenci eklenemedi");
     }
   };
 
@@ -158,7 +167,6 @@ export default function AdminGroupsPage() {
             />
             <Button onClick={create}>Oluştur</Button>
           </div>
-          {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
         </Card>
 
         <Card className="mb-6">
@@ -178,7 +186,6 @@ export default function AdminGroupsPage() {
             </select>
             <Button onClick={addMember}>Ekle</Button>
           </div>
-          {memberError && <p className="text-sm text-red-500 mt-3">{memberError}</p>}
         </Card>
 
         {isLoading ? (

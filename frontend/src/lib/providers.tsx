@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AuthProvider } from "./auth";
+import { MessageProvider } from "./messages";
 import { NotificationProvider } from "./notifications";
 import { ThemeProvider } from "./theme";
 
@@ -25,9 +26,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <NotificationProvider>{children}</NotificationProvider>
-        </AuthProvider>
+        <MessageProvider>
+          <AuthProvider>
+            <NotificationProvider>{children}</NotificationProvider>
+          </AuthProvider>
+        </MessageProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

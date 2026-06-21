@@ -112,7 +112,7 @@ def _is_overdue(assignment: dict) -> bool:
 
 def submit_assignment(assignment_id: str, student_id: str, data: dict, file=None) -> dict:
     assignment = get_assignment(assignment_id)
-    submission_text = data.get("submission_text")
+    submission_text = (data.get("submission_text") or "").strip() or None
 
     db = get_supabase_admin()
     existing = (

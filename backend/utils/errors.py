@@ -25,6 +25,10 @@ def register_error_handlers(app):
     def handle_too_large(_err):
         return error_response("Dosya çok büyük (en fazla 25 MB).", 413)
 
+    @app.errorhandler(415)
+    def handle_unsupported_media(_err):
+        return error_response("Geçersiz istek formatı. Form veya JSON gönder.", 415)
+
     @app.errorhandler(422)
     def handle_unprocessable(_err):
         return error_response("Unprocessable entity", 422)

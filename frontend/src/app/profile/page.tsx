@@ -6,8 +6,10 @@ import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, IconBubble, Input, PageHeader } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { showApiError, useMessage } from "@/lib/messages";
 
 export default function ProfilePage() {
+  const msg = useMessage();
   const { user, refresh } = useAuth();
   const [form, setForm] = useState({
     full_name: user?.full_name || "",
@@ -16,18 +18,16 @@ export default function ProfilePage() {
   });
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
     setLoading(true);
-    setMessage("");
     try {
       await api.updateProfile(form);
       await refresh();
-      setMessage("Profil güncellendi");
+      msg.success("Profil güncellendi");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Güncelleme başarısız");
+      showApiError(msg, err, "Güncelleme başarısız");
     } finally {
       setLoading(false);
     }
@@ -35,13 +35,12 @@ export default function ProfilePage() {
 
   const handlePhoto = async (file: File) => {
     setUploading(true);
-    setMessage("");
     try {
       await api.uploadProfilePhoto(file);
       await refresh();
-      setMessage("Profil fotoğrafı güncellendi");
+      msg.success("Profil fotoğrafı güncellendi");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Fotoğraf yüklenemedi");
+      showApiError(msg, err, "Fotoğraf yüklenemedi");
     } finally {
       setUploading(false);
     }
@@ -91,7 +90,6 @@ export default function ProfilePage() {
               />
             </label>
             <p className="text-sm text-zinc-500">E-posta: {user?.email}</p>
-            {message && <p className="text-sm text-amber-500">{message}</p>}
             <Button onClick={handleSave} disabled={loading}>
               {loading ? "Kaydediliyor..." : "Kaydet"}
             </Button>
