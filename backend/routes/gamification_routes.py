@@ -36,6 +36,36 @@ def student_achievements():
 
 
 # --- Admin endpoints ---
+@gamification_bp.route("/admin/students/summary", methods=["GET"])
+@require_role("superadmin")
+def admin_students_summary():
+    return jsonify(gamification_service.list_students_summary())
+
+
+@gamification_bp.route("/admin/students/<student_id>/overview", methods=["GET"])
+@require_role("superadmin")
+def admin_student_overview(student_id):
+    return jsonify(gamification_service.get_student_overview(student_id))
+
+
+@gamification_bp.route("/admin/students/<student_id>/meblahs", methods=["GET"])
+@require_role("superadmin")
+def admin_student_meblahs(student_id):
+    return jsonify(gamification_service.get_student_meblahs(student_id))
+
+
+@gamification_bp.route("/admin/students/<student_id>/level", methods=["GET"])
+@require_role("superadmin")
+def admin_student_level(student_id):
+    return jsonify(gamification_service.get_student_level(student_id))
+
+
+@gamification_bp.route("/admin/students/<student_id>/meblahs/<record_id>", methods=["DELETE"])
+@require_role("superadmin")
+def remove_student_meblah(student_id, record_id):
+    return jsonify(gamification_service.remove_student_meblah(student_id, record_id))
+
+
 @gamification_bp.route("/admin/points/grant", methods=["POST"])
 @require_role("superadmin")
 def admin_grant_points():

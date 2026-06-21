@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CheckCircle2, FileDown, XCircle } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, LoadingSpinner, PageHeader, StatusBadge } from "@/components/ui";
+import { Button, Card, LoadingSpinner, PageHeader, StatusBadge, StudentRow } from "@/components/ui";
 import { api } from "@/lib/api";
 import { showApiError, useMessage } from "@/lib/messages";
 
@@ -14,7 +14,7 @@ type PendingSubmission = {
   file_url?: string;
   is_late?: boolean;
   created_at?: string;
-  profiles?: { full_name: string; username: string };
+  profiles?: { full_name: string; username: string; profile_photo_url?: string | null };
   assignments?: { title: string; due_date: string };
 };
 
@@ -75,12 +75,15 @@ export default function AdminApprovalsPage() {
             {submissions.map((s) => (
               <Card key={s.id} className="border-l-4 border-l-amber-400">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-semibold">{s.assignments?.title ?? "Ödev"}</h3>
-                    <p className="text-sm text-zinc-500">
-                      {s.profiles?.full_name}
-                      {s.profiles?.username && <span className="text-zinc-400"> · @{s.profiles.username}</span>}
-                    </p>
+                    <StudentRow
+                      name={s.profiles?.full_name ?? "Öğrenci"}
+                      photoUrl={s.profiles?.profile_photo_url}
+                      subtitle={s.profiles?.username ? `@${s.profiles.username}` : undefined}
+                      size={32}
+                      className="mt-2"
+                    />
                   </div>
                   <StatusBadge status="pending" isLate={s.is_late} />
                 </div>

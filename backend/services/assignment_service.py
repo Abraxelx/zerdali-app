@@ -162,7 +162,7 @@ def get_submissions(assignment_id: str) -> list:
     db = get_supabase_admin()
     result = (
         db.table("assignment_submissions")
-        .select("*, profiles(id, full_name, username)")
+        .select("*, profiles(id, full_name, username, profile_photo_url)")
         .eq("assignment_id", assignment_id)
         .execute()
     )
@@ -174,7 +174,7 @@ def get_pending_submissions() -> list:
     db = get_supabase_admin()
     result = (
         db.table("assignment_submissions")
-        .select("*, profiles(id, full_name, username), assignments(id, title, due_date)")
+        .select("*, profiles(id, full_name, username, profile_photo_url), assignments(id, title, due_date)")
         .eq("status", "pending")
         .order("created_at", desc=False)
         .execute()

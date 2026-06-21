@@ -4,13 +4,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, Input, LoadingSpinner, PageHeader } from "@/components/ui";
+import { Button, Card, Input, LoadingSpinner, PageHeader, StudentAvatar, StudentRow } from "@/components/ui";
 import { api, GroupMember } from "@/lib/api";
 import { showApiError, useMessage } from "@/lib/messages";
+import { QUERY_STALE } from "@/lib/query-config";
 
 type Lesson = { id: string; lesson_title: string; lesson_date: string; lesson_time?: string };
-type AttendanceRow = { student_id: string; status: string; profiles?: { full_name: string } };
-type ScoreRow = { student_id: string; score: number; profiles?: { full_name: string } };
+type AttendanceRow = { student_id: string; status: string; profiles?: { full_name: string; profile_photo_url?: string | null } };
+type ScoreRow = { student_id: string; score: number; profiles?: { full_name: string; profile_photo_url?: string | null } };
 
 const statusLabels: Record<string, string> = {
   present: "Katıldı",
@@ -32,6 +33,7 @@ export default function AdminLessonsPage() {
     queryKey: ["group-members", groupId],
     queryFn: () => api.getGroupMembers(groupId),
     enabled: !!groupId,
+    staleTime: QUERY_STALE.groupMembers,
   });
   const { data: lessons, isLoading } = useQuery({
     queryKey: ["admin-lessons", groupId],
@@ -193,7 +195,8 @@ export default function AdminLessonsPage() {
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {savedAttendance.map((row) => (
-                        <span key={row.student_id} className="rounded-full bg-zinc-500/10 px-2.5 py-1 text-xs">
+                        <span key={row.student_id} className="inline-flex items-center gap-1.5 rounded-full bg-zinc-500/10 pl-1 pr-2.5 py-1 text-xs">
+                          <StudentAvatar name={row.profiles?.full_name ?? "?"} photoUrl={row.profiles?.profile_photo_url} size={20} />
                           {row.profiles?.full_name ?? "?"}: {statusLabels[row.status] ?? row.status}
                         </span>
                       ))}
@@ -211,8 +214,8 @@ export default function AdminLessonsPage() {
                       <LoadingSpinner />
                     ) : (
                       students.map((u) => (
-                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10">
-                          <span className="text-sm">{u.full_name}</span>
+                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10 gap-2">
+                          <StudentRow name={u.full_name} photoUrl={u.profile_photo_url} size={28} />
                           <select
                             className="rounded border border-zinc-300/70 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700/70 dark:bg-zinc-900/50"
                             value={attendance[u.id] || ""}
@@ -236,8 +239,8 @@ export default function AdminLessonsPage() {
                       <LoadingSpinner />
                     ) : (
                       students.map((u) => (
-                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10">
-                          <span className="text-sm">{u.full_name}</span>
+                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10 gap-2">
+                          <StudentRow name={u.full_name} photoUrl={u.profile_photo_url} size={28} />
                           <input
                             type="number"
                             min={1}

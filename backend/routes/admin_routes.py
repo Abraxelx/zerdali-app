@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 
 from config import Config
 from services import auth_service, gamification_service
-from utils.file_upload import upload_file
+from utils.file_upload import delete_file_by_url, upload_file
 from utils.security import get_current_user, require_auth, require_role
 
 admin_bp = Blueprint("admin", __name__)
@@ -50,7 +50,10 @@ def upload_profile():
         from utils.errors import APIError
         raise APIError("file is required", 422)
     url = upload_file(file, Config.BUCKET_PROFILE_IMAGES, "profiles", Config.IMAGE_EXTENSIONS)
+    old_url = user.get("profile_photo_url")
     profile = auth_service.update_profile(user["id"], {"profile_photo_url": url})
+    if old_url and old_url != url:
+        delete_file_by_url(old_url, Config.BUCKET_PROFILE_IMAGES)
     return jsonify({"url": url, "profile": profile})
 
 

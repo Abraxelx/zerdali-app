@@ -6,6 +6,7 @@ import { AuthProvider } from "./auth";
 import { MessageProvider } from "./messages";
 import { NotificationProvider } from "./notifications";
 import { ThemeProvider } from "./theme";
+import { QUERY_STALE } from "./query-config";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -13,6 +14,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
+            staleTime: 60 * 1000,
+            gcTime: 15 * 60 * 1000,
             retry: (failureCount, error) => {
               const msg = error instanceof Error ? error.message : "";
               if (msg.includes("401") || msg.includes("403") || msg.includes("404")) return false;

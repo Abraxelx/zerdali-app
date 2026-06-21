@@ -60,6 +60,50 @@ export function IconBubble({ src, fallback, size = 40 }: { src?: string | null; 
   );
 }
 
+/** Öğrenci profil fotoğrafı veya isim baş harfi. */
+export function StudentAvatar({
+  name,
+  photoUrl,
+  size = 36,
+}: {
+  name: string;
+  photoUrl?: string | null;
+  size?: number;
+}) {
+  return (
+    <IconBubble
+      src={photoUrl}
+      size={size}
+      fallback={<span className="text-xs font-semibold">{name?.charAt(0)?.toUpperCase() ?? "?"}</span>}
+    />
+  );
+}
+
+/** Avatar + isim + alt satır (username vb.) */
+export function StudentRow({
+  name,
+  photoUrl,
+  subtitle,
+  size = 36,
+  className = "",
+}: {
+  name: string;
+  photoUrl?: string | null;
+  subtitle?: string;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-center gap-3 min-w-0 ${className}`}>
+      <StudentAvatar name={name} photoUrl={photoUrl} size={size} />
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{name}</p>
+        {subtitle && <p className="text-xs text-zinc-500 truncate">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
 export function Button({
   children,
   variant = "primary",

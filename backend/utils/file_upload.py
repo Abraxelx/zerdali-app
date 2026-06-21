@@ -1,9 +1,14 @@
+import logging
 import uuid
+from urllib.parse import unquote
+
 from werkzeug.utils import secure_filename
 
 from config import Config
 from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin
+
+logger = logging.getLogger(__name__)
 
 
 def allowed_file(filename: str, allowed: set | None = None) -> bool:
@@ -33,6 +38,30 @@ def upload_file(file, bucket: str, folder: str = "", allowed: set | None = None)
     return public_url
 
 
-def delete_file(bucket: str, path: str):
+def storage_path_from_public_url(url: str, bucket: str) -> str | None:
+    """Supabase public URL'den bucket içi dosya yolunu çıkarır."""
+    if not url:
+        return None
+    marker = f"/object/public/{bucket}/"
+    idx = url.find(marker)
+    if idx == -1:
+        return None
+    return unquote(url[idx + len(marker) :].split("?")[0])
+
+
+def delete_file(bucket: str, path: str) -> None:
+    if not path:
+        return
     db = get_supabase_admin()
     db.storage.from_(bucket).remove([path])
+
+
+def delete_file_by_url(public_url: str, bucket: str) -> None:
+    """Public URL ile storage dosyasını siler; hata olursa sessizce loglar."""
+    path = storage_path_from_public_url(public_url, bucket)
+    if not path:
+        return
+    try:
+        delete_file(bucket, path)
+    except Exception as e:
+        logger.warning("Storage dosyası silinemedi bucket=%s path=%s: %s", bucket, path, e)

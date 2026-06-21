@@ -139,7 +139,7 @@ def get_lesson_attendance(lesson_id: str) -> list:
     db = get_supabase_admin()
     result = (
         db.table("attendance")
-        .select("*, profiles(id, full_name, username)")
+        .select("*, profiles(id, full_name, username, profile_photo_url)")
         .eq("lesson_id", lesson_id)
         .execute()
     )
@@ -213,7 +213,7 @@ def get_lesson_scores(lesson_id: str) -> list:
     db = get_supabase_admin()
     result = (
         db.table("lesson_scores")
-        .select("*, profiles(id, full_name, username)")
+        .select("*, profiles(id, full_name, username, profile_photo_url)")
         .eq("lesson_id", lesson_id)
         .execute()
     )

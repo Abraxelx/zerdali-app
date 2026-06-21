@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CalendarClock, Paperclip } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, Input, LoadingSpinner, PageHeader, StatusBadge } from "@/components/ui";
+import { Button, Card, Input, LoadingSpinner, PageHeader, StatusBadge, StudentRow } from "@/components/ui";
 import { api } from "@/lib/api";
 import { showApiError, useMessage } from "@/lib/messages";
 
@@ -14,7 +14,7 @@ type Submission = {
   status?: string;
   score?: number | null;
   is_late?: boolean;
-  profiles?: { full_name: string };
+  profiles?: { full_name: string; profile_photo_url?: string | null };
 };
 
 export default function AdminAssignmentsPage() {
@@ -111,7 +111,11 @@ export default function AdminAssignmentsPage() {
                   submissions.map((s) => (
                     <div key={s.id} className="border-b border-zinc-100 dark:border-zinc-800 py-3">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="font-medium text-sm">{s.profiles?.full_name}</p>
+                        <StudentRow
+                          name={s.profiles?.full_name ?? "Öğrenci"}
+                          photoUrl={s.profiles?.profile_photo_url}
+                          size={28}
+                        />
                         <StatusBadge status={s.status ?? "pending"} isLate={s.is_late} />
                       </div>
                       <p className="text-sm text-zinc-500 mt-1">{s.submission_text}</p>

@@ -16,7 +16,47 @@ export type Profile = {
 export type GroupMember = {
   student_id: string;
   joined_at?: string;
-  profiles?: Pick<Profile, "id" | "full_name" | "username" | "email"> | null;
+  profiles?: Pick<Profile, "id" | "full_name" | "username" | "email" | "profile_photo_url"> | null;
+};
+
+export type StudentSummary = {
+  profile: Profile;
+  total_zerdalyum: number;
+  effective_multiplier: number;
+  effective_power: number;
+  current_level: {
+    level_number: number;
+    title: string;
+    required_zerdalyum: number;
+    icon_url?: string | null;
+  } | null;
+};
+
+export type StudentLevel = {
+  effective_power: number;
+  effective_multiplier: number;
+  current_level: StudentSummary["current_level"];
+  next_level: StudentSummary["current_level"];
+};
+
+export type StudentMeblah = {
+  id: string;
+  earned_at?: string;
+  meblah_types?: {
+    id: string;
+    name: string;
+    rarity: string;
+    zerdalyum_multiplier: number;
+    icon_url?: string | null;
+  };
+};
+
+export type StudentOverview = {
+  profile: Profile;
+  points: { total_zerdalyum: number; recent_transactions: { amount: number; description: string; created_at: string }[] };
+  level: StudentLevel;
+  meblahs: StudentMeblah[];
+  groups: { group_id: string; student_groups?: { group_name: string } }[];
 };
 
 function getToken(): string | null {
@@ -174,4 +214,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ student_id: studentId, amount, description }),
     }),
+  getStudentsSummary: () => apiFetch<StudentSummary[]>("/admin/students/summary"),
+  getStudentOverview: (studentId: string) => apiFetch<StudentOverview>(`/admin/students/${studentId}/overview`),
+  removeStudentMeblah: (studentId: string, recordId: string) =>
+    apiFetch(`/admin/students/${studentId}/meblahs/${recordId}`, { method: "DELETE" }),
 };

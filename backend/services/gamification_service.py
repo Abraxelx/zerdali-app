@@ -93,6 +93,17 @@ def get_student_level(student_id: str) -> dict:
     levels = db.table("levels").select("*").order("level_number").execute()
     all_levels = levels.data or []
 
+    current_level, next_level = _resolve_levels(power, all_levels)
+
+    return {
+        "effective_power": power,
+        "effective_multiplier": get_effective_multiplier(student_id),
+        "current_level": current_level,
+        "next_level": next_level,
+    }
+
+
+def _resolve_levels(power: float, all_levels: list) -> tuple[dict | None, dict | None]:
     current_level = all_levels[0] if all_levels else None
     next_level = None
 
@@ -105,12 +116,94 @@ def get_student_level(student_id: str) -> dict:
                 next_level = level
             break
 
+    return current_level, next_level
+
+
+def list_students_summary() -> list:
+    users = list_users(role="student")
+    if not users:
+        return []
+
+    student_ids = [u["id"] for u in users]
+    db = get_supabase_admin()
+
+    points_res = (
+        db.table("student_points")
+        .select("student_id, total_zerdalyum")
+        .in_("student_id", student_ids)
+        .execute()
+    )
+    points_map = {p["student_id"]: p["total_zerdalyum"] for p in (points_res.data or [])}
+
+    meblahs_res = (
+        db.table("student_meblahs")
+        .select("student_id, meblah_types(zerdalyum_multiplier)")
+        .in_("student_id", student_ids)
+        .execute()
+    )
+    mult_map: dict[str, float] = {}
+    for item in meblahs_res.data or []:
+        sid = item["student_id"]
+        mt = item.get("meblah_types") or {}
+        m = float(mt.get("zerdalyum_multiplier") or 1)
+        mult_map[sid] = max(mult_map.get(sid, 1.0), m)
+
+    levels = list_levels()
+    summaries = []
+    for u in users:
+        sid = u["id"]
+        total = points_map.get(sid, 0)
+        mult = mult_map.get(sid, 1.0)
+        power = total * mult
+        current_level, _ = _resolve_levels(power, levels)
+        summaries.append(
+            {
+                "profile": u,
+                "total_zerdalyum": total,
+                "effective_multiplier": mult,
+                "effective_power": power,
+                "current_level": current_level,
+            }
+        )
+    return summaries
+
+
+def get_student_overview(student_id: str) -> dict:
+    db = get_supabase_admin()
+    profile = db.table("profiles").select("*").eq("id", student_id).maybe_single().execute()
+    profile_data = get_data(profile)
+    if not profile_data:
+        raise APIError("Student not found", 404)
+    if profile_data.get("role") != "student":
+        raise APIError("User is not a student", 422)
+
+    from services import group_service, point_service
+
     return {
-        "effective_power": power,
-        "effective_multiplier": get_effective_multiplier(student_id),
-        "current_level": current_level,
-        "next_level": next_level,
+        "profile": profile_data,
+        "points": point_service.get_student_points(student_id),
+        "level": get_student_level(student_id),
+        "meblahs": get_student_meblahs(student_id),
+        "groups": group_service.get_student_groups(student_id),
     }
+
+
+def remove_student_meblah(student_id: str, record_id: str) -> dict:
+    db = get_supabase_admin()
+    row = (
+        db.table("student_meblahs")
+        .select("id, student_id")
+        .eq("id", record_id)
+        .maybe_single()
+        .execute()
+    )
+    data = get_data(row)
+    if not data or data["student_id"] != student_id:
+        raise APIError("Meblah not found", 404)
+
+    db.table("student_meblahs").delete().eq("id", record_id).execute()
+    log_event("MEBLAH_REMOVED", student_id, {"student_meblah_id": record_id})
+    return {"message": "Meblah removed"}
 
 
 def check_level_up(student_id: str):

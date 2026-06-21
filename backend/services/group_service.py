@@ -150,7 +150,7 @@ def get_group_members(group_id: str) -> list:
     student_ids = [m["student_id"] for m in members]
     profiles_result = (
         db.table("profiles")
-        .select("id, full_name, username, email, role")
+        .select("id, full_name, username, email, role, profile_photo_url")
         .in_("id", student_ids)
         .eq("role", "student")
         .execute()

@@ -26,6 +26,7 @@ const adminLinks = [
   { href: "/admin/assignments", label: "Ödevler" },
   { href: "/admin/approvals", label: "Ödev Onay" },
   { href: "/admin/gamification", label: "Oyunlaştırma" },
+  { href: "/admin/students", label: "Öğrenciler" },
   { href: "/admin/users", label: "Kullanıcılar" },
   { href: "/admin/points", label: "Puanlar" },
 ];

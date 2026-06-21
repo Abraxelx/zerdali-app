@@ -1,11 +1,13 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, Input, LoadingSpinner, PageHeader } from "@/components/ui";
+import { Button, Card, Input, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
 import { api, GroupMember } from "@/lib/api";
 import { showApiError, useMessage } from "@/lib/messages";
+import { QUERY_STALE } from "@/lib/query-config";
 
 const DAYS = [
   { value: "1", label: "Pazartesi" },
@@ -44,12 +46,15 @@ type Group = {
   is_active: boolean;
 };
 
-function GroupCard({ group }: { group: Group }) {
+function GroupCard({ group, expanded, onToggle }: { group: Group; expanded: boolean; onToggle: () => void }) {
   const msg = useMessage();
   const qc = useQueryClient();
-  const { data: members, isLoading } = useQuery({
+  const { data: members, isLoading, isFetching } = useQuery({
     queryKey: ["group-members", group.id],
     queryFn: () => api.getGroupMembers(group.id),
+    enabled: expanded,
+    staleTime: QUERY_STALE.groupMembers,
+    gcTime: 30 * 60 * 1000,
   });
 
   const removeMember = async (studentId: string) => {
@@ -63,55 +68,80 @@ function GroupCard({ group }: { group: Group }) {
   };
 
   return (
-    <Card>
-      <h3 className="font-semibold">{group.group_name}</h3>
-      <p className="text-sm text-zinc-500">
-        {DAY_LABELS[group.lesson_day] ?? group.lesson_day} — {formatHour(group.lesson_hour)}
-      </p>
-      <p className="text-xs text-zinc-400 mt-1 mb-4">{group.is_active ? "Aktif" : "Pasif"}</p>
+    <Card className="overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-start justify-between gap-2 text-left"
+      >
+        <div>
+          <h3 className="font-semibold">{group.group_name}</h3>
+          <p className="text-sm text-zinc-500">
+            {DAY_LABELS[group.lesson_day] ?? group.lesson_day} — {formatHour(group.lesson_hour)}
+          </p>
+          <p className="text-xs text-zinc-400 mt-1">
+            {group.is_active ? "Aktif" : "Pasif"}
+            {expanded && members && ` · ${members.length} öğrenci`}
+          </p>
+        </div>
+        <ChevronDown
+          size={18}
+          className={`shrink-0 text-zinc-400 transition mt-1 ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
 
-      <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-2">
-          Öğrenciler ({members?.length ?? 0})
-        </p>
-        {isLoading ? (
-          <p className="text-sm text-zinc-400">Yükleniyor...</p>
-        ) : members && members.length > 0 ? (
-          <ul className="space-y-2">
-            {members.map((m: GroupMember) => (
-              <li
-                key={m.student_id}
-                className="flex items-center justify-between rounded-lg bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2"
-              >
-                <div>
-                  <p className="text-sm font-medium">{m.profiles?.full_name ?? "Bilinmeyen"}</p>
-                  <p className="text-xs text-zinc-500">@{m.profiles?.username ?? m.student_id.slice(0, 8)}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeMember(m.student_id)}
-                  className="text-xs text-red-500 hover:text-red-600"
+      {expanded && (
+        <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-3">
+          {isLoading || (isFetching && !members) ? (
+            <p className="text-sm text-zinc-400">Yükleniyor...</p>
+          ) : members && members.length > 0 ? (
+            <ul className="space-y-2">
+              {members.map((m: GroupMember) => (
+                <li
+                  key={m.student_id}
+                  className="flex items-center justify-between rounded-lg bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2"
                 >
-                  Çıkar
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-zinc-400">Henüz öğrenci yok</p>
-        )}
-      </div>
+                  <StudentRow
+                    name={m.profiles?.full_name ?? "Bilinmeyen"}
+                    photoUrl={m.profiles?.profile_photo_url}
+                    subtitle={`@${m.profiles?.username ?? m.student_id.slice(0, 8)}`}
+                    size={32}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeMember(m.student_id)}
+                    className="text-xs text-red-500 hover:text-red-600 shrink-0 ml-2"
+                  >
+                    Çıkar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-zinc-400">Henüz öğrenci yok</p>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
 
 export default function AdminGroupsPage() {
   const msg = useMessage();
-  const { data, isLoading } = useQuery({ queryKey: ["admin-groups"], queryFn: api.getAdminGroups });
-  const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => api.getUsers("student") });
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-groups"],
+    queryFn: api.getAdminGroups,
+    staleTime: QUERY_STALE.groups,
+  });
+  const { data: users } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: () => api.getUsers("student"),
+    staleTime: QUERY_STALE.adminUsers,
+  });
   const [form, setForm] = useState({ group_name: "", lesson_day: "", lesson_hour: "14:00" });
   const [memberGroup, setMemberGroup] = useState("");
   const [memberStudent, setMemberStudent] = useState("");
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const create = async () => {
@@ -134,7 +164,7 @@ export default function AdminGroupsPage() {
       await api.addMember(memberGroup, memberStudent);
       setMemberStudent("");
       qc.invalidateQueries({ queryKey: ["group-members", memberGroup] });
-      qc.invalidateQueries({ queryKey: ["group-members"] });
+      if (expandedGroupId !== memberGroup) setExpandedGroupId(memberGroup);
       msg.success("Öğrenci gruba eklendi");
     } catch (err) {
       showApiError(msg, err, "Öğrenci eklenemedi");
@@ -144,7 +174,7 @@ export default function AdminGroupsPage() {
   return (
     <AuthGuard role="superadmin">
       <AppLayout variant="admin">
-        <PageHeader title="Gruplar" subtitle="Öğrenci gruplarını yönet" />
+        <PageHeader title="Gruplar" subtitle="Gruba tıklayınca üyeler açılır — 10 dk önbellekte tutulur" />
         <Card className="mb-6">
           <h3 className="font-semibold mb-4">Yeni Grup</h3>
           <div className="grid gap-3 sm:grid-cols-4">
@@ -193,7 +223,12 @@ export default function AdminGroupsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {(data as Group[] | undefined)?.map((g) => (
-              <GroupCard key={g.id} group={g} />
+              <GroupCard
+                key={g.id}
+                group={g}
+                expanded={expandedGroupId === g.id}
+                onToggle={() => setExpandedGroupId((id) => (id === g.id ? null : g.id))}
+              />
             ))}
           </div>
         )}
