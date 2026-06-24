@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from config import Config
-from services import auth_service, gamification_service
+from services import activity_service, auth_service, gamification_service
 from utils.file_upload import delete_file_by_url, upload_file
 from utils.security import get_current_user, require_auth, require_role
 
@@ -13,6 +13,14 @@ admin_bp = Blueprint("admin", __name__)
 def list_users():
     role = request.args.get("role")
     return jsonify(gamification_service.list_users(role))
+
+
+@admin_bp.route("/admin/login-logs", methods=["GET"])
+@require_role("superadmin")
+def list_login_logs():
+    limit = request.args.get("limit", 100, type=int)
+    offset = request.args.get("offset", 0, type=int)
+    return jsonify(activity_service.list_login_logs(limit, offset))
 
 
 @admin_bp.route("/admin/users/<user_id>/role", methods=["PUT"])

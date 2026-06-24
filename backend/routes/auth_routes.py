@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from services import auth_service
+from utils.request_helpers import get_client_ip, get_user_agent
 from utils.security import get_current_user, require_auth
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -21,7 +22,12 @@ def register():
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json() or {}
-    result = auth_service.login(email=data.get("email"), password=data.get("password"))
+    result = auth_service.login(
+        email=data.get("email"),
+        password=data.get("password"),
+        ip_address=get_client_ip(),
+        user_agent=get_user_agent(),
+    )
     return jsonify(result)
 
 
@@ -35,4 +41,5 @@ def forgot_password():
 @require_auth
 def me():
     user = get_current_user()
+    auth_service.track_session(user["id"], get_client_ip(), get_user_agent())
     return jsonify(user)

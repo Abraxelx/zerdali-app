@@ -30,6 +30,7 @@ const adminLinks = [
   { href: "/admin/gamification", label: "Oyunlaştırma" },
   { href: "/admin/students", label: "Öğrenciler" },
   { href: "/admin/users", label: "Kullanıcılar" },
+  { href: "/admin/activity", label: "Giriş Kayıtları" },
   { href: "/admin/points", label: "Puanlar" },
 ];
 

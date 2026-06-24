@@ -1,6 +1,7 @@
 import logging
 
 from config import Config
+from services import activity_service
 from utils.db_helpers import get_data
 from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin, get_supabase_anon
@@ -32,6 +33,9 @@ def register(email: str, password: str, full_name: str, username: str) -> dict:
             {"id": user_id, "email": email, "full_name": full_name, "username": username, "role": "student"}
         ).execute()
 
+    if auth_res.session:
+        activity_service.record_login(user_id)
+
     return {
         "user_id": user_id,
         "email": email,
@@ -40,7 +44,12 @@ def register(email: str, password: str, full_name: str, username: str) -> dict:
     }
 
 
-def login(email: str, password: str) -> dict:
+def login(
+    email: str,
+    password: str,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> dict:
     if not email or not password:
         raise APIError("email and password are required", 422)
 
@@ -53,11 +62,17 @@ def login(email: str, password: str) -> dict:
     if not auth_res.session:
         raise APIError("Login failed", 401)
 
+    activity_service.record_login(auth_res.user.id, ip_address, user_agent)
+
     return {
         "access_token": auth_res.session.access_token,
         "refresh_token": auth_res.session.refresh_token,
         "user_id": auth_res.user.id,
     }
+
+
+def track_session(user_id: str, ip_address: str | None = None, user_agent: str | None = None) -> None:
+    activity_service.record_session_if_needed(user_id, ip_address, user_agent)
 
 
 def forgot_password(email: str) -> dict:

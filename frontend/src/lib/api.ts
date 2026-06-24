@@ -13,6 +13,16 @@ export type Profile = {
   bio?: string;
 };
 
+export type LoginLog = {
+  id: string;
+  user_id: string;
+  entry_type: "login" | "session";
+  logged_in_at: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  profiles?: Pick<Profile, "id" | "full_name" | "username" | "email" | "role" | "profile_photo_url"> | null;
+};
+
 export type GroupMember = {
   student_id: string;
   joined_at?: string;
@@ -187,6 +197,7 @@ export const api = {
 
   // Admin
   getUsers: (role?: string) => apiFetch<Profile[]>(`/admin/users${role ? `?role=${role}` : ""}`),
+  getLoginLogs: (limit = 100) => apiFetch<LoginLog[]>(`/admin/login-logs?limit=${limit}`),
   updateUserRole: (id: string, role: string) =>
     apiFetch(`/admin/users/${id}/role`, { method: "PUT", body: JSON.stringify({ role }) }),
   getAdminGroups: () => apiFetch<unknown[]>("/admin/groups"),

@@ -44,6 +44,11 @@ def test_admin_groups_unauthorized(client):
     assert response.status_code == 401
 
 
+def test_admin_login_logs_unauthorized(client):
+    response = client.get("/admin/login-logs")
+    assert response.status_code == 401
+
+
 def test_forum_unauthorized(client):
     response = client.get("/forum/groups")
     assert response.status_code == 401
