@@ -2,7 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut, Menu, X } from "lucide-react";
+import {
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  GraduationCap,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Sparkles,
+  User,
+  UserCircle,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
@@ -10,52 +30,55 @@ import { ThemeToggle } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { NotificationBell } from "@/lib/notifications";
 
-type NavLink = { href: string; label: string };
+type NavLink = { href: string; label: string; icon: LucideIcon };
 
 type NavEntry =
-  | { kind: "link"; href: string; label: string }
-  | { kind: "menu"; label: string; items: NavLink[] };
+  | { kind: "link"; href: string; label: string; icon: LucideIcon }
+  | { kind: "menu"; label: string; icon: LucideIcon; items: NavLink[] };
 
 const studentNav: NavEntry[] = [
-  { kind: "link", href: "/dashboard", label: "Panel" },
+  { kind: "link", href: "/dashboard", label: "Panel", icon: LayoutDashboard },
   {
     kind: "menu",
     label: "Eğitim",
+    icon: GraduationCap,
     items: [
-      { href: "/lessons", label: "Dersler" },
-      { href: "/attendance", label: "Yoklama" },
-      { href: "/scores", label: "Notlar" },
-      { href: "/assignments", label: "Ödevler" },
+      { href: "/lessons", label: "Dersler", icon: BookOpen },
+      { href: "/attendance", label: "Yoklama", icon: ClipboardCheck },
+      { href: "/scores", label: "Notlar", icon: FileText },
+      { href: "/assignments", label: "Ödevler", icon: ClipboardList },
     ],
   },
-  { kind: "link", href: "/forum", label: "Forum" },
-  { kind: "link", href: "/profile", label: "Profil" },
+  { kind: "link", href: "/forum", label: "Forum", icon: MessageSquare },
+  { kind: "link", href: "/profile", label: "Profil", icon: User },
 ];
 
 const adminNav: NavEntry[] = [
-  { kind: "link", href: "/admin", label: "Panel" },
+  { kind: "link", href: "/admin", label: "Panel", icon: LayoutDashboard },
   {
     kind: "menu",
     label: "Eğitim",
+    icon: GraduationCap,
     items: [
-      { href: "/admin/groups", label: "Gruplar" },
-      { href: "/admin/lessons", label: "Dersler" },
-      { href: "/admin/assignments", label: "Ödevler" },
-      { href: "/admin/approvals", label: "Ödev Onay" },
+      { href: "/admin/groups", label: "Gruplar", icon: Users },
+      { href: "/admin/lessons", label: "Dersler", icon: BookOpen },
+      { href: "/admin/assignments", label: "Ödevler", icon: ClipboardList },
+      { href: "/admin/approvals", label: "Ödev Onay", icon: CheckCircle2 },
     ],
   },
   {
     kind: "menu",
     label: "Öğrenciler",
+    icon: UserCircle,
     items: [
-      { href: "/admin/students", label: "Öğrenci Listesi" },
-      { href: "/admin/users", label: "Kullanıcılar" },
-      { href: "/admin/points", label: "Puan Ver" },
-      { href: "/admin/activity", label: "Giriş Kayıtları" },
+      { href: "/admin/students", label: "Öğrenci Listesi", icon: GraduationCap },
+      { href: "/admin/users", label: "Kullanıcılar", icon: Users },
+      { href: "/admin/points", label: "Puan Ver", icon: Zap },
+      { href: "/admin/activity", label: "Giriş Kayıtları", icon: LogIn },
     ],
   },
-  { kind: "link", href: "/admin/gamification", label: "Oyun" },
-  { kind: "link", href: "/forum", label: "Forum" },
+  { kind: "link", href: "/admin/gamification", label: "Oyun", icon: Sparkles },
+  { kind: "link", href: "/forum", label: "Forum", icon: MessageSquare },
 ];
 
 function isPathActive(pathname: string, href: string) {
@@ -68,20 +91,35 @@ function isMenuActive(pathname: string, items: NavLink[]) {
 }
 
 function navItemClass(active: boolean) {
-  return `inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition ${
+  return `inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition ${
     active
       ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
       : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
   }`;
 }
 
+function NavIcon({ icon: Icon, size = 16 }: { icon: LucideIcon; size?: number }) {
+  return <Icon size={size} className="shrink-0 opacity-90" aria-hidden />;
+}
+
+function NavLabel({ icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <>
+      <NavIcon icon={icon} />
+      <span>{label}</span>
+    </>
+  );
+}
+
 function NavDropdown({
   label,
+  icon,
   items,
   pathname,
   onNavigate,
 }: {
   label: string;
+  icon: LucideIcon;
   items: NavLink[];
   pathname: string;
   onNavigate?: () => void;
@@ -112,13 +150,14 @@ function NavDropdown({
         aria-expanded={open}
         aria-haspopup="true"
       >
-        {label}
+        <NavLabel icon={icon} label={label} />
         <ChevronDown size={14} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="absolute left-0 top-[calc(100%+4px)] z-[60] min-w-[12rem] rounded-xl border border-white/50 bg-white/95 py-1 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95">
           {items.map((item) => {
             const itemActive = isPathActive(pathname, item.href);
+            const ItemIcon = item.icon;
             return (
               <Link
                 key={item.href}
@@ -127,12 +166,13 @@ function NavDropdown({
                   setOpen(false);
                   onNavigate?.();
                 }}
-                className={`block px-3 py-2 text-sm transition ${
+                className={`flex items-center gap-2.5 px-3 py-2 text-sm transition ${
                   itemActive
                     ? "bg-amber-500/10 font-medium text-amber-600 dark:text-amber-400"
                     : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
                 }`}
               >
+                <ItemIcon size={16} className="shrink-0 opacity-80" aria-hidden />
                 {item.label}
               </Link>
             );
@@ -153,10 +193,16 @@ function DesktopNav({ entries, pathname }: { entries: NavEntry[]; pathname: stri
             href={entry.href}
             className={navItemClass(isPathActive(pathname, entry.href))}
           >
-            {entry.label}
+            <NavLabel icon={entry.icon} label={entry.label} />
           </Link>
         ) : (
-          <NavDropdown key={entry.label} label={entry.label} items={entry.items} pathname={pathname} />
+          <NavDropdown
+            key={entry.label}
+            label={entry.label}
+            icon={entry.icon}
+            items={entry.items}
+            pathname={pathname}
+          />
         )
       )}
     </nav>
@@ -165,12 +211,14 @@ function DesktopNav({ entries, pathname }: { entries: NavEntry[]; pathname: stri
 
 function MobileNavGroup({
   label,
+  icon,
   items,
   pathname,
   onClose,
   defaultOpen,
 }: {
   label: string;
+  icon: LucideIcon;
   items: NavLink[];
   pathname: string;
   onClose: () => void;
@@ -188,25 +236,32 @@ function MobileNavGroup({
           active ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "text-zinc-700 dark:text-zinc-200"
         }`}
       >
-        {label}
-        <ChevronDown size={16} className={`transition ${open ? "rotate-180" : ""}`} />
+        <span className="flex items-center gap-2.5">
+          <NavIcon icon={icon} size={18} />
+          {label}
+        </span>
+        <ChevronDown size={16} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="border-t border-zinc-500/10 bg-zinc-500/5 px-1 py-1 dark:bg-white/5">
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={`block rounded-lg px-3 py-2 text-sm transition ${
-                isPathActive(pathname, item.href)
-                  ? "bg-amber-500/15 font-medium text-amber-600 dark:text-amber-400"
-                  : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {items.map((item) => {
+            const ItemIcon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${
+                  isPathActive(pathname, item.href)
+                    ? "bg-amber-500/15 font-medium text-amber-600 dark:text-amber-400"
+                    : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
+                }`}
+              >
+                <ItemIcon size={16} className="shrink-0 opacity-80" aria-hidden />
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
@@ -232,18 +287,20 @@ function MobileNav({
             key={entry.href}
             href={entry.href}
             onClick={onClose}
-            className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
               isPathActive(pathname, entry.href)
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                 : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
             }`}
           >
+            <NavIcon icon={entry.icon} size={18} />
             {entry.label}
           </Link>
         ) : (
           <MobileNavGroup
             key={entry.label}
             label={entry.label}
+            icon={entry.icon}
             items={entry.items}
             pathname={pathname}
             onClose={onClose}
@@ -251,20 +308,24 @@ function MobileNav({
           />
         )
       )}
-      {extraLinks?.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          onClick={onClose}
-          className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-            isPathActive(pathname, link.href)
-              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-              : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
-          }`}
-        >
-          {link.label}
-        </Link>
-      ))}
+      {extraLinks?.map((link) => {
+        const LinkIcon = link.icon;
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            onClick={onClose}
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+              isPathActive(pathname, link.href)
+                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
+            }`}
+          >
+            <LinkIcon size={18} className="shrink-0 opacity-90" aria-hidden />
+            {link.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -276,7 +337,9 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAdmin = variant === "admin";
 
-  const adminExtraMobileLinks: NavLink[] = [{ href: "/admin/profile", label: "Öğretmen Profili" }];
+  const adminExtraMobileLinks: NavLink[] = [
+    { href: "/admin/profile", label: "Öğretmen Profili", icon: UserCircle },
+  ];
 
   useEffect(() => {
     setMobileOpen(false);
