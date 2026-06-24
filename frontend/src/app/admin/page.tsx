@@ -36,6 +36,7 @@ function AdminDashboard() {
             { href: "/admin/users", label: "Kullanıcılar" },
             { href: "/admin/activity", label: "Giriş Kayıtları" },
             { href: "/admin/points", label: "Puan Ver" },
+            { href: "/admin/profile", label: "Öğretmen Profili" },
           ].map((item) => (
             <a key={item.href} href={item.href} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-sm font-medium">
               {item.label}

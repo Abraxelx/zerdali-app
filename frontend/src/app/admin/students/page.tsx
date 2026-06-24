@@ -267,7 +267,7 @@ export default function AdminStudentsPage() {
       <AppLayout variant="admin">
         <PageHeader
           title="Öğrenciler"
-          subtitle="Puan, meblağ, çarpan ve seviye yönetimi"
+          subtitle="Puan sıralamasına göre — en yüksek güç üstte"
         />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -297,6 +297,9 @@ export default function AdminStudentsPage() {
                       }`}
                     >
                       <div className="flex items-center gap-3">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-xs font-bold text-amber-600 dark:text-amber-400">
+                          {s.rank ?? "—"}
+                        </span>
                         <StudentAvatar
                           name={s.profile.full_name}
                           photoUrl={s.profile.profile_photo_url}

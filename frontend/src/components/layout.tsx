@@ -38,6 +38,7 @@ const adminLinks: NavLink[] = [
   { href: "/admin/users", label: "Kullanıcılar" },
   { href: "/admin/activity", label: "Giriş Kayıtları", shortLabel: "Girişler" },
   { href: "/admin/points", label: "Puanlar" },
+  { href: "/admin/profile", label: "Profil", shortLabel: "Profil" },
 ];
 
 function navLinkClass(active: boolean) {

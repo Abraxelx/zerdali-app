@@ -119,18 +119,28 @@ def _resolve_levels(power: float, all_levels: list) -> tuple[dict | None, dict |
     return current_level, next_level
 
 
-def list_students_summary() -> list:
-    users = list_users(role="student")
+def _student_summaries_for_ids(student_ids: list[str]) -> list[dict]:
+    if not student_ids:
+        return []
+
+    db = get_supabase_admin()
+    profiles_res = (
+        db.table("profiles")
+        .select("*")
+        .in_("id", student_ids)
+        .eq("role", "student")
+        .execute()
+    )
+    users = profiles_res.data or []
     if not users:
         return []
 
-    student_ids = [u["id"] for u in users]
-    db = get_supabase_admin()
+    ids = [u["id"] for u in users]
 
     points_res = (
         db.table("student_points")
         .select("student_id, total_zerdalyum")
-        .in_("student_id", student_ids)
+        .in_("student_id", ids)
         .execute()
     )
     points_map = {p["student_id"]: p["total_zerdalyum"] for p in (points_res.data or [])}
@@ -138,7 +148,7 @@ def list_students_summary() -> list:
     meblahs_res = (
         db.table("student_meblahs")
         .select("student_id, meblah_types(zerdalyum_multiplier)")
-        .in_("student_id", student_ids)
+        .in_("student_id", ids)
         .execute()
     )
     mult_map: dict[str, float] = {}
@@ -165,7 +175,51 @@ def list_students_summary() -> list:
                 "current_level": current_level,
             }
         )
+
+    summaries.sort(key=lambda x: x["effective_power"], reverse=True)
+    for i, summary in enumerate(summaries, start=1):
+        summary["rank"] = i
     return summaries
+
+
+def list_students_summary() -> list:
+    users = list_users(role="student")
+    if not users:
+        return []
+    return _student_summaries_for_ids([u["id"] for u in users])
+
+
+def get_group_leaderboard(group_id: str) -> list:
+    from services import group_service
+
+    group_service.get_group(group_id)
+    members = group_service.get_group_members(group_id)
+    student_ids = [m["student_id"] for m in members if m.get("profiles")]
+    return _student_summaries_for_ids(student_ids)
+
+
+def get_student_class_leaderboards(student_id: str) -> list:
+    from services import group_service
+
+    memberships = group_service.get_student_groups(student_id)
+    boards = []
+    for membership in memberships:
+        embedded = membership.get("student_groups") or {}
+        group_id = membership.get("group_id") or embedded.get("id")
+        if group_id is None:
+            continue
+        group_name = embedded.get("group_name") or "Sınıf"
+        entries = get_group_leaderboard(str(group_id))
+        for entry in entries:
+            entry["is_me"] = entry["profile"]["id"] == student_id
+        boards.append(
+            {
+                "group_id": str(group_id),
+                "group_name": group_name,
+                "leaderboard": entries,
+            }
+        )
+    return boards
 
 
 def get_student_overview(student_id: str) -> dict:

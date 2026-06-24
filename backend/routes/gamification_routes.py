@@ -35,6 +35,24 @@ def student_achievements():
     return jsonify(gamification_service.get_student_achievements(user["id"]))
 
 
+@gamification_bp.route("/student/teachers", methods=["GET"])
+@require_auth
+def student_teachers():
+    from services import auth_service
+
+    return jsonify(auth_service.get_public_teachers())
+
+
+@gamification_bp.route("/student/leaderboard", methods=["GET"])
+@require_auth
+def student_leaderboard():
+    user = get_current_user()
+    if user.get("role") != "student":
+        from utils.errors import APIError
+        raise APIError("Only students can access class leaderboard", 403)
+    return jsonify(gamification_service.get_student_class_leaderboards(user["id"]))
+
+
 # --- Admin endpoints ---
 @gamification_bp.route("/admin/students/summary", methods=["GET"])
 @require_role("superadmin")

@@ -128,3 +128,15 @@ def update_profile(user_id: str, data: dict) -> dict:
     if not result.data:
         raise APIError("Profile not found", 404)
     return result.data[0]
+
+
+def get_public_teachers() -> list:
+    db = get_supabase_admin()
+    result = (
+        db.table("profiles")
+        .select("id, full_name, username, bio, profile_photo_url, role")
+        .eq("role", "superadmin")
+        .order("full_name")
+        .execute()
+    )
+    return result.data or []

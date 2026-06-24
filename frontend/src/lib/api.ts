@@ -30,6 +30,7 @@ export type GroupMember = {
 };
 
 export type StudentSummary = {
+  rank?: number;
   profile: Profile;
   total_zerdalyum: number;
   effective_multiplier: number;
@@ -41,6 +42,16 @@ export type StudentSummary = {
     icon_url?: string | null;
   } | null;
 };
+
+export type LeaderboardEntry = StudentSummary & { is_me?: boolean };
+
+export type ClassLeaderboard = {
+  group_id: string;
+  group_name: string;
+  leaderboard: LeaderboardEntry[];
+};
+
+export type TeacherProfile = Pick<Profile, "id" | "full_name" | "username" | "bio" | "profile_photo_url" | "role">;
 
 export type StudentLevel = {
   effective_power: number;
@@ -185,6 +196,8 @@ export const api = {
   getScores: () => apiFetch<unknown[]>("/student/scores"),
   getAssignments: () => apiFetch<unknown[]>("/student/assignments"),
   getGroups: () => apiFetch<unknown[]>("/student/groups"),
+  getTeachers: () => apiFetch<TeacherProfile[]>("/student/teachers"),
+  getClassLeaderboard: () => apiFetch<ClassLeaderboard[]>("/student/leaderboard"),
   submitAssignment: (id: string, body: FormData) =>
     apiFetch(`/student/assignments/${id}/submit`, { method: "POST", body }),
   updateProfile: (body: Record<string, string>) =>
