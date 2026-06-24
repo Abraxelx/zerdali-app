@@ -2,9 +2,11 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { useAuth } from "./auth";
+import { notificationHref, NotificationData } from "./notification-links";
 
 export type AppNotification = {
   id: string;
@@ -13,6 +15,7 @@ export type AppNotification = {
   message: string;
   read: boolean;
   created_at: string;
+  data?: NotificationData | null;
 };
 
 type NotificationContextType = {
@@ -23,6 +26,7 @@ type NotificationContextType = {
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   dismissToast: (id: string) => void;
+  openNotification: (n: AppNotification) => void;
 };
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -53,6 +57,7 @@ function formatWhen(iso: string) {
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const router = useRouter();
   const qc = useQueryClient();
   const seenIds = useRef<Set<string>>(new Set());
   const initialized = useRef(false);
@@ -96,6 +101,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     qc.invalidateQueries({ queryKey: ["notifications"] });
   }, [qc]);
 
+  const openNotification = useCallback(
+    async (n: AppNotification) => {
+      if (!user) return;
+      const href = notificationHref(n.type, n.data, user.role);
+      if (!n.read) await markRead(n.id);
+      setPanelOpen(false);
+      setToasts((prev) => prev.filter((t) => t.id !== n.id));
+      if (href) router.push(href);
+    },
+    [user, markRead, router]
+  );
+
   const dismissToast = useCallback(
     async (id: string) => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -112,38 +129,62 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   return (
     <NotificationContext.Provider
-      value={{ unreadCount, panelOpen, togglePanel, closePanel, markRead, markAllRead, dismissToast }}
+      value={{
+        unreadCount,
+        panelOpen,
+        togglePanel,
+        closePanel,
+        markRead,
+        markAllRead,
+        dismissToast,
+        openNotification,
+      }}
     >
       {children}
 
-      {/* Anlık toast'lar */}
       {user && toasts.length > 0 && (
         <div className="fixed inset-x-3 bottom-4 z-[100] mx-auto flex max-w-sm flex-col gap-2 sm:inset-x-auto sm:right-4 sm:mx-0">
-          {toasts.map((t) => (
-            <div
-              key={t.id}
-              className="glass-strong animate-fade-in-up flex items-start gap-3 rounded-2xl p-4 shadow-lg border border-amber-200/50 dark:border-amber-800/30"
-            >
-              <div className="rounded-full bg-amber-100 p-2 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
-                <Bell size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{t.title}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">{t.message}</p>
-              </div>
-              <button
-                onClick={() => dismissToast(t.id)}
-                className="shrink-0 rounded p-1 text-zinc-400 hover:text-zinc-600"
-                aria-label="Kapat"
+          {toasts.map((t) => {
+            const href = notificationHref(t.type, t.data, user.role);
+            return (
+              <div
+                key={t.id}
+                className={`glass-strong animate-fade-in-up flex items-start gap-3 rounded-2xl p-4 shadow-lg border border-amber-200/50 dark:border-amber-800/30 ${
+                  href ? "cursor-pointer hover:border-amber-400/60" : ""
+                }`}
+                onClick={() => href && openNotification(t)}
+                role={href ? "button" : undefined}
+                tabIndex={href ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (href && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    openNotification(t);
+                  }
+                }}
               >
-                <X size={16} />
-              </button>
-            </div>
-          ))}
+                <div className="rounded-full bg-amber-100 p-2 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+                  <Bell size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{t.title}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">{t.message}</p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dismissToast(t.id);
+                  }}
+                  className="shrink-0 rounded p-1 text-zinc-400 hover:text-zinc-600"
+                  aria-label="Kapat"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Geçmiş paneli */}
       {user && panelOpen && (
         <>
           <button className="fixed inset-0 z-[90] bg-black/20" aria-label="Kapat" onClick={closePanel} />
@@ -169,27 +210,31 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               {list.length === 0 ? (
                 <p className="p-4 text-sm text-zinc-500 text-center">Henüz bildirim yok</p>
               ) : (
-                list.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    onClick={() => {
-                      if (!n.read) markRead(n.id);
-                    }}
-                    className={`w-full text-left px-4 py-3 border-b border-zinc-500/10 transition hover:bg-zinc-500/5 ${
-                      !n.read ? "bg-amber-500/5" : ""
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />}
-                      <div className={!n.read ? "" : "pl-4"}>
-                        <p className="text-sm font-medium">{n.title}</p>
-                        <p className="text-xs text-zinc-500 mt-0.5">{n.message}</p>
-                        <p className="text-[10px] text-zinc-400 mt-1">{formatWhen(n.created_at)}</p>
+                list.map((n) => {
+                  const href = notificationHref(n.type, n.data, user.role);
+                  return (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => openNotification(n)}
+                      className={`w-full text-left px-4 py-3 border-b border-zinc-500/10 transition hover:bg-zinc-500/5 ${
+                        !n.read ? "bg-amber-500/5" : ""
+                      } ${href ? "cursor-pointer" : ""}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />}
+                        <div className={!n.read ? "" : "pl-4"}>
+                          <p className="text-sm font-medium">{n.title}</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">{n.message}</p>
+                          <p className="text-[10px] text-zinc-400 mt-1">{formatWhen(n.created_at)}</p>
+                          {href && (
+                            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">Görüntülemek için tıkla</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>

@@ -83,6 +83,7 @@ def grant_meblah(student_id: str, meblah_type_id: str) -> dict:
         "MEBLAH_EARNED",
         "Yeni meblağ kazandın!",
         f'"{mt_data["name"]}" meblağı hesabına eklendi.',
+        data={"meblah_type_id": meblah_type_id},
     )
     return result.data[0]
 

@@ -49,6 +49,7 @@ def grant_points(student_id: str, amount: int, transaction_type: str, descriptio
             "POINTS",
             titles.get(transaction_type, "Puan kazandın!"),
             f"+{amount} Zerdalyum — {description}",
+            data={"transaction_type": transaction_type},
         )
 
     from services.gamification_service import check_level_up

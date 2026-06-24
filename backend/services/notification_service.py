@@ -3,37 +3,61 @@ from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin
 
 
-def _insert(user_id: str, ntype: str, title: str, message: str) -> dict | None:
+def _insert(
+    user_id: str,
+    ntype: str,
+    title: str,
+    message: str,
+    data: dict | None = None,
+) -> dict | None:
     db = get_supabase_admin()
-    result = db.table("notifications").insert(
-        {"user_id": user_id, "type": ntype, "title": title, "message": message}
-    ).execute()
+    row: dict = {"user_id": user_id, "type": ntype, "title": title, "message": message}
+    if data:
+        row["data"] = data
+    result = db.table("notifications").insert(row).execute()
     return result.data[0] if result.data else None
 
 
-def notify_user(user_id: str, ntype: str, title: str, message: str) -> dict | None:
-    return _insert(user_id, ntype, title, message)
+def notify_user(
+    user_id: str,
+    ntype: str,
+    title: str,
+    message: str,
+    data: dict | None = None,
+) -> dict | None:
+    return _insert(user_id, ntype, title, message, data)
 
 
-def notify_superadmins(ntype: str, title: str, message: str) -> list:
+def notify_superadmins(
+    ntype: str,
+    title: str,
+    message: str,
+    data: dict | None = None,
+) -> list:
     db = get_supabase_admin()
     admins = db.table("profiles").select("id").eq("role", "superadmin").execute()
     created = []
     for row in admins.data or []:
-        n = _insert(row["id"], ntype, title, message)
+        n = _insert(row["id"], ntype, title, message, data)
         if n:
             created.append(n)
     return created
 
 
-def notify_group_students(group_id: str, ntype: str, title: str, message: str) -> list:
+def notify_group_students(
+    group_id: str,
+    ntype: str,
+    title: str,
+    message: str,
+    data: dict | None = None,
+) -> list:
     from services.group_service import get_group_members
 
     created = []
     for member in get_group_members(group_id):
         sid = member.get("student_id")
         if sid:
-            n = _insert(sid, ntype, title, message)
+            n = _insert(sid, ntype, title, message, data)
             if n:
                 created.append(n)
     return created

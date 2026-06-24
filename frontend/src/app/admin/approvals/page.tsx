@@ -1,7 +1,8 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2, FileDown, XCircle } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, LoadingSpinner, PageHeader, StatusBadge, StudentRow } from "@/components/ui";
@@ -19,8 +20,26 @@ type PendingSubmission = {
 };
 
 export default function AdminApprovalsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthGuard role="superadmin">
+          <AppLayout variant="admin">
+            <LoadingSpinner />
+          </AppLayout>
+        </AuthGuard>
+      }
+    >
+      <AdminApprovalsContent />
+    </Suspense>
+  );
+}
+
+function AdminApprovalsContent() {
   const msg = useMessage();
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("submission");
   const { data, isLoading } = useQuery({
     queryKey: ["pending-submissions"],
     queryFn: () => api.getPendingSubmissions() as Promise<PendingSubmission[]>,
@@ -54,6 +73,14 @@ export default function AdminApprovalsPage() {
 
   const submissions = data ?? [];
 
+  useEffect(() => {
+    if (!highlightId || !submissions.length) return;
+    const el = document.getElementById(`submission-${highlightId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightId, submissions]);
+
   return (
     <AuthGuard role="superadmin">
       <AppLayout variant="admin">
@@ -73,7 +100,12 @@ export default function AdminApprovalsPage() {
           <div className="space-y-4">
             <p className="text-sm text-zinc-500">{submissions.length} ödev onay bekliyor</p>
             {submissions.map((s) => (
-              <Card key={s.id} className="border-l-4 border-l-amber-400">
+              <div
+                key={s.id}
+                id={`submission-${s.id}`}
+                className={s.id === highlightId ? "rounded-2xl ring-2 ring-amber-400/50" : undefined}
+              >
+              <Card className="border-l-4 border-l-amber-400">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold">{s.assignments?.title ?? "Ödev"}</h3>
@@ -132,6 +164,7 @@ export default function AdminApprovalsPage() {
                   </Button>
                 </div>
               </Card>
+              </div>
             ))}
           </div>
         )}

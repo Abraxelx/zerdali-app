@@ -43,6 +43,7 @@ def create_assignment(data: dict, file=None) -> dict:
             "ASSIGNMENT_CREATED",
             "Yeni ödev",
             f'"{data["title"]}" ödevi verildi. Teslim et!',
+            data={"assignment_id": assignment["id"]},
         )
     return assignment
 
@@ -150,10 +151,15 @@ def submit_assignment(assignment_id: str, student_id: str, data: dict, file=None
     profile = db.table("profiles").select("full_name").eq("id", student_id).maybe_single().execute()
     name = get_data(profile).get("full_name", "Öğrenci") if get_data(profile) else "Öğrenci"
     from services.notification_service import notify_superadmins
+    submission_row = result.data[0] if result.data else None
+    notify_data: dict = {"assignment_id": assignment_id}
+    if submission_row:
+        notify_data["submission_id"] = submission_row["id"]
     notify_superadmins(
         "HOMEWORK_SUBMITTED",
         "Yeni ödev teslimi",
         f'{name} "{assignment["title"]}" ödevini teslim etti.',
+        data=notify_data,
     )
     return result.data[0] if result.data else payload
 
@@ -230,6 +236,7 @@ def review_submission(submission_id: str, action: str, score: int | None = None,
             "HOMEWORK_APPROVED",
             "Ödevin onaylandı!",
             f'"{assignment["title"]}" — not: {score} (+{score * Config.POINTS_HOMEWORK_SCORE_MULTIPLIER} Zerdalyum)',
+            data={"assignment_id": submission["assignment_id"]},
         )
     else:
         log_event("HOMEWORK_REJECTED", submission["student_id"], {"assignment_id": submission["assignment_id"]})
@@ -238,6 +245,12 @@ def review_submission(submission_id: str, action: str, score: int | None = None,
         msg = f'"{assignment["title"]}" ödevin reddedildi.'
         if feedback:
             msg += f" Geri bildirim: {feedback}"
-        notify_user(submission["student_id"], "HOMEWORK_REJECTED", "Ödev reddedildi", msg)
+        notify_user(
+            submission["student_id"],
+            "HOMEWORK_REJECTED",
+            "Ödev reddedildi",
+            msg,
+            data={"assignment_id": submission["assignment_id"]},
+        )
 
     return reviewed

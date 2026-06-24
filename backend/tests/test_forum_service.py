@@ -127,10 +127,14 @@ def test_get_topic_quota_admin():
 def test_notify_forum_comment_notifies_author(mock_notify):
     from services.forum_service import _notify_forum_comment
 
-    topic = {"author_id": "author-1", "title": "Test konusu"}
+    topic = {"id": "topic-1", "author_id": "author-1", "title": "Test konusu"}
     _notify_forum_comment(topic, "commenter-1", set(), {"full_name": "Ali"})
     mock_notify.assert_called_once_with(
-        "author-1", "FORUM_COMMENT", "Forum yorumu", 'Ali "Test konusu" konusuna yorum yaptı.'
+        "author-1",
+        "FORUM_COMMENT",
+        "Forum yorumu",
+        'Ali "Test konusu" konusuna yorum yaptı.',
+        data={"topic_id": "topic-1"},
     )
 
 
@@ -138,8 +142,12 @@ def test_notify_forum_comment_notifies_author(mock_notify):
 def test_notify_forum_comment_skips_self(mock_notify):
     from services.forum_service import _notify_forum_comment
 
-    topic = {"author_id": "user-1", "title": "Test"}
+    topic = {"id": "topic-1", "author_id": "user-1", "title": "Test"}
     _notify_forum_comment(topic, "user-1", {"user-2"}, {"full_name": "Ayşe"})
     mock_notify.assert_called_once_with(
-        "user-2", "FORUM_COMMENT", "Forum yorumu", 'Ayşe "Test" konusuna yorum yaptı.'
+        "user-2",
+        "FORUM_COMMENT",
+        "Forum yorumu",
+        'Ayşe "Test" konusuna yorum yaptı.',
+        data={"topic_id": "topic-1"},
     )

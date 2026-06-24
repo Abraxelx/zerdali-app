@@ -36,6 +36,7 @@ def create_lesson(data: dict) -> dict:
         "LESSON_CREATED",
         "Yeni ders",
         f'"{data["lesson_title"]}" dersi eklendi{time_label}.',
+        data={"lesson_id": lesson["id"]},
     )
     return lesson
 

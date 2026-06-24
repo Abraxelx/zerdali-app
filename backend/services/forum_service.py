@@ -288,4 +288,10 @@ def _notify_forum_comment(topic: dict, commenter_id: str, prior_commenters: set[
     message = f'{name} "{title}" konusuna yorum yaptı.'
 
     for user_id in recipients:
-        notify_user(user_id, "FORUM_COMMENT", "Forum yorumu", message)
+        notify_user(
+            user_id,
+            "FORUM_COMMENT",
+            "Forum yorumu",
+            message,
+            data={"topic_id": topic["id"]},
+        )
