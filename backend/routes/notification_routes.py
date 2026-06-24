@@ -11,7 +11,7 @@ notification_bp = Blueprint("notifications", __name__)
 def list_notifications():
     user = get_current_user()
     unread_only = request.args.get("unread") == "1"
-    return jsonify(notification_service.get_notifications(user["id"], unread_only))
+    return jsonify(notification_service.get_notifications(user["id"], user.get("role", "student"), unread_only))
 
 
 @notification_bp.route("/notifications/<notification_id>/read", methods=["POST"])

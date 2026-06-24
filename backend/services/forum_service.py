@@ -293,5 +293,5 @@ def _notify_forum_comment(topic: dict, commenter_id: str, prior_commenters: set[
             "FORUM_COMMENT",
             "Forum yorumu",
             message,
-            data={"topic_id": topic["id"]},
+            data={"topic_id": str(topic["id"])},
         )

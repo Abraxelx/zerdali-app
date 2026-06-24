@@ -16,6 +16,7 @@ export type AppNotification = {
   read: boolean;
   created_at: string;
   data?: NotificationData | null;
+  href?: string | null;
 };
 
 type NotificationContextType = {
@@ -104,7 +105,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const openNotification = useCallback(
     async (n: AppNotification) => {
       if (!user) return;
-      const href = notificationHref(n.type, n.data, user.role);
+      const href = notificationHref(n.type, n.data, user.role, n.href);
       if (!n.read) await markRead(n.id);
       setPanelOpen(false);
       setToasts((prev) => prev.filter((t) => t.id !== n.id));
@@ -145,7 +146,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {user && toasts.length > 0 && (
         <div className="fixed inset-x-3 bottom-4 z-[100] mx-auto flex max-w-sm flex-col gap-2 sm:inset-x-auto sm:right-4 sm:mx-0">
           {toasts.map((t) => {
-            const href = notificationHref(t.type, t.data, user.role);
+            const href = notificationHref(t.type, t.data, user.role, t.href);
             return (
               <div
                 key={t.id}
@@ -211,7 +212,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 <p className="p-4 text-sm text-zinc-500 text-center">Henüz bildirim yok</p>
               ) : (
                 list.map((n) => {
-                  const href = notificationHref(n.type, n.data, user.role);
+                  const href = notificationHref(n.type, n.data, user.role, n.href);
                   return (
                     <button
                       key={n.id}

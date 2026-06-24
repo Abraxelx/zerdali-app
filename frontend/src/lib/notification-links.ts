@@ -2,16 +2,39 @@ import { Profile } from "./api";
 
 export type NotificationData = Record<string, string | number | boolean | null | undefined>;
 
+export function normalizeNotificationData(raw: unknown): NotificationData {
+  if (!raw) return {};
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as NotificationData;
+      }
+    } catch {
+      return {};
+    }
+    return {};
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as NotificationData;
+  }
+  return {};
+}
+
 export function notificationHref(
   type: string,
   data: NotificationData | null | undefined,
-  role: Profile["role"]
+  role: Profile["role"],
+  href?: string | null
 ): string | null {
+  if (href) return href;
+
   const isParent = role === "veli";
   const isAdmin = role === "superadmin";
-  const d = data ?? {};
+  const d = normalizeNotificationData(data);
+  const ntype = type.trim();
 
-  switch (type) {
+  switch (ntype) {
     case "FORUM_COMMENT": {
       const topicId = d.topic_id != null ? String(d.topic_id) : null;
       if (topicId) return isParent ? `/parent/forum/${topicId}` : `/forum/${topicId}`;

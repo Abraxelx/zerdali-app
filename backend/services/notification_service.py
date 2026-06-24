@@ -1,6 +1,85 @@
+import json
+
 from utils.db_helpers import get_data
 from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin
+
+
+def _normalize_data(data) -> dict:
+    if data is None:
+        return {}
+    if isinstance(data, str):
+        try:
+            parsed = json.loads(data)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    if isinstance(data, dict):
+        return data
+    return {}
+
+
+def _serialize_data(data: dict | None) -> dict:
+    normalized = _normalize_data(data)
+    return {str(k): v for k, v in normalized.items() if v is not None}
+
+
+def resolve_notification_href(ntype: str, data: dict | None, role: str) -> str | None:
+    d = _normalize_data(data)
+    ntype = (ntype or "").strip()
+
+    if ntype == "FORUM_COMMENT":
+        topic_id = d.get("topic_id")
+        if topic_id:
+            path = f"/forum/{topic_id}"
+            if role == "veli":
+                path = f"/parent/forum/{topic_id}"
+            return path
+        return "/parent/forum" if role == "veli" else "/forum"
+
+    if ntype == "HOMEWORK_SUBMITTED":
+        if role != "superadmin":
+            return None
+        submission_id = d.get("submission_id")
+        if submission_id:
+            return f"/admin/approvals?submission={submission_id}"
+        return "/admin/approvals"
+
+    if ntype in ("HOMEWORK_APPROVED", "HOMEWORK_REJECTED", "ASSIGNMENT_CREATED"):
+        return "/parent/assignments" if role == "veli" else "/assignments"
+
+    if ntype == "LESSON_CREATED":
+        return None if role == "veli" else "/lessons"
+
+    if ntype == "POINTS":
+        tx = d.get("transaction_type")
+        if role == "veli":
+            if tx == "ATTENDANCE":
+                return "/parent/attendance"
+            if tx == "LESSON_SCORE":
+                return "/parent/scores"
+            if tx == "HOMEWORK":
+                return "/parent/assignments"
+            return "/parent"
+        if tx == "ATTENDANCE":
+            return "/attendance"
+        if tx == "LESSON_SCORE":
+            return "/scores"
+        if tx == "HOMEWORK":
+            return "/assignments"
+        return "/dashboard"
+
+    if ntype == "MEBLAH_EARNED":
+        return "/parent" if role == "veli" else "/dashboard"
+
+    return None
+
+
+def _enrich_notification(row: dict, role: str) -> dict:
+    data = _normalize_data(row.get("data"))
+    row["data"] = data
+    row["href"] = resolve_notification_href(row.get("type"), data, role)
+    return row
 
 
 def _insert(
@@ -11,9 +90,13 @@ def _insert(
     data: dict | None = None,
 ) -> dict | None:
     db = get_supabase_admin()
-    row: dict = {"user_id": user_id, "type": ntype, "title": title, "message": message}
-    if data:
-        row["data"] = data
+    row: dict = {
+        "user_id": user_id,
+        "type": ntype,
+        "title": title,
+        "message": message,
+        "data": _serialize_data(data),
+    }
     result = db.table("notifications").insert(row).execute()
     return result.data[0] if result.data else None
 
@@ -63,13 +146,14 @@ def notify_group_students(
     return created
 
 
-def get_notifications(user_id: str, unread_only: bool = False) -> list:
+def get_notifications(user_id: str, role: str, unread_only: bool = False) -> list:
     db = get_supabase_admin()
     query = db.table("notifications").select("*").eq("user_id", user_id)
     if unread_only:
         query = query.eq("read", False)
     result = query.order("created_at", desc=True).limit(50).execute()
-    return result.data or []
+    rows = result.data or []
+    return [_enrich_notification(row, role) for row in rows]
 
 
 def mark_read(notification_id: str, user_id: str) -> dict:
