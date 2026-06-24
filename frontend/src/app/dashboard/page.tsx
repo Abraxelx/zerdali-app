@@ -75,7 +75,7 @@ function DashboardContent() {
           <h2 className="font-semibold mb-4">Son İşlemler</h2>
           <div className="space-y-2">
             {(points.recent_transactions as { amount: number; type: string; description: string }[]).map((tx, i) => (
-              <div key={i} className="flex justify-between text-sm border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                <div key={i} className="flex flex-col gap-1 border-b border-zinc-100 pb-2 text-sm sm:flex-row sm:justify-between dark:border-zinc-800">
                 <span>{tx.description}</span>
                 <span className={`font-medium animate-point-pop ${tx.amount > 0 ? "text-green-500" : "text-red-500"}`}>
                   {tx.amount > 0 ? "+" : ""}{tx.amount}

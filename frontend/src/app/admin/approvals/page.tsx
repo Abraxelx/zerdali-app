@@ -123,7 +123,7 @@ export default function AdminApprovalsPage() {
                 </div>
                 <p className="mt-1 text-xs text-zinc-400">Puan × 10 Zerdalyum olarak verilir (örn. 8 → 80 Zerdalyum)</p>
 
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <Button onClick={() => approve(s.id)} disabled={review.isPending}>
                     <span className="inline-flex items-center gap-1"><CheckCircle2 size={15} /> Onayla & Puanla</span>
                   </Button>

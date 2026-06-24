@@ -131,7 +131,7 @@ export default function AdminGamificationPage() {
                     <span className="text-sm text-zinc-500">×{m.zerdalyum_multiplier}</span>
                   </div>
                 </div>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                   <Input
                     placeholder="İsim"
                     defaultValue={m.name}
@@ -142,7 +142,7 @@ export default function AdminGamificationPage() {
                     defaultValue={String(m.zerdalyum_multiplier)}
                     onChange={(e) => setEdits({ ...edits, [m.id]: { ...edits[m.id], zerdalyum_multiplier: e.target.value } })}
                   />
-                  <Button onClick={() => saveMeblah(m.id)}>Kaydet</Button>
+                  <Button className="shrink-0 sm:self-end" onClick={() => saveMeblah(m.id)}>Kaydet</Button>
                 </div>
               </div>
             ))}
@@ -156,7 +156,7 @@ export default function AdminGamificationPage() {
                   <IconUploader current={l.icon_url} onUploaded={(url) => saveLevel(l.id, { icon_url: url })} />
                   <span className="text-xs text-zinc-400">Seviye {l.level_number}</span>
                 </div>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                   <Input
                     placeholder="Başlık"
                     defaultValue={l.title}
@@ -167,7 +167,7 @@ export default function AdminGamificationPage() {
                     defaultValue={String(l.required_zerdalyum)}
                     onChange={(e) => setLevelEdits({ ...levelEdits, [l.id]: { ...levelEdits[l.id], required_zerdalyum: e.target.value } })}
                   />
-                  <Button onClick={() => saveLevel(l.id)}>Kaydet</Button>
+                  <Button className="shrink-0 sm:self-end" onClick={() => saveLevel(l.id)}>Kaydet</Button>
                 </div>
               </div>
             ))}

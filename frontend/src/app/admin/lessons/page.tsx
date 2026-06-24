@@ -214,10 +214,10 @@ export default function AdminLessonsPage() {
                       <LoadingSpinner />
                     ) : (
                       students.map((u) => (
-                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10 gap-2">
+                        <div key={u.id} className="flex flex-col gap-2 border-b border-zinc-500/10 py-2 sm:flex-row sm:items-center sm:justify-between">
                           <StudentRow name={u.full_name} photoUrl={u.profile_photo_url} size={28} />
                           <select
-                            className="rounded border border-zinc-300/70 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700/70 dark:bg-zinc-900/50"
+                            className="w-full rounded border border-zinc-300/70 bg-white/70 px-2 py-1 text-sm sm:w-auto dark:border-zinc-700/70 dark:bg-zinc-900/50"
                             value={attendance[u.id] || ""}
                             onChange={(e) => setAttendance({ ...attendance, [u.id]: e.target.value })}
                           >
@@ -239,13 +239,13 @@ export default function AdminLessonsPage() {
                       <LoadingSpinner />
                     ) : (
                       students.map((u) => (
-                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-zinc-500/10 gap-2">
+                        <div key={u.id} className="flex flex-col gap-2 border-b border-zinc-500/10 py-2 sm:flex-row sm:items-center sm:justify-between">
                           <StudentRow name={u.full_name} photoUrl={u.profile_photo_url} size={28} />
                           <input
                             type="number"
                             min={1}
                             max={12}
-                            className="w-16 rounded border border-zinc-300/70 bg-white/70 px-2 py-1 text-sm dark:border-zinc-700/70 dark:bg-zinc-900/50"
+                            className="w-full rounded border border-zinc-300/70 bg-white/70 px-2 py-1 text-sm sm:w-16 dark:border-zinc-700/70 dark:bg-zinc-900/50"
                             value={scores[u.id] || ""}
                             onChange={(e) => setScores({ ...scores, [u.id]: e.target.value })}
                           />

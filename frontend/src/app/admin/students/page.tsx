@@ -215,9 +215,9 @@ function StudentDetail({ studentId, onUpdated }: { studentId: string; onUpdated:
             ))
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <select
-            className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm"
             value={grantMeblahId}
             onChange={(e) => setGrantMeblahId(e.target.value)}
           >
@@ -228,7 +228,7 @@ function StudentDetail({ studentId, onUpdated }: { studentId: string; onUpdated:
               </option>
             ))}
           </select>
-          <Button onClick={grantMeblah} disabled={busy}>
+          <Button className="shrink-0" onClick={grantMeblah} disabled={busy}>
             Ver
           </Button>
         </div>
@@ -282,7 +282,7 @@ export default function AdminStudentsPage() {
             {isLoading ? (
               <LoadingSpinner />
             ) : (
-              <div className="space-y-2 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1 lg:max-h-[calc(100vh-12rem)]">
                 {filtered.map((s) => {
                   const active = (selectedId ?? filtered[0]?.profile.id) === s.profile.id;
                   return (

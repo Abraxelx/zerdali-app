@@ -118,7 +118,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       {/* Anlık toast'lar */}
       {user && toasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-[100] flex max-w-sm flex-col gap-2">
+        <div className="fixed inset-x-3 bottom-4 z-[100] mx-auto flex max-w-sm flex-col gap-2 sm:inset-x-auto sm:right-4 sm:mx-0">
           {toasts.map((t) => (
             <div
               key={t.id}
@@ -147,7 +147,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       {user && panelOpen && (
         <>
           <button className="fixed inset-0 z-[90] bg-black/20" aria-label="Kapat" onClick={closePanel} />
-          <div className="fixed right-4 top-16 z-[95] w-full max-w-sm glass-strong rounded-2xl shadow-xl border border-white/40 dark:border-white/10 overflow-hidden">
+          <div className="fixed inset-x-3 top-16 z-[95] mx-auto w-full max-w-sm glass-strong rounded-2xl shadow-xl border border-white/40 dark:border-white/10 overflow-hidden sm:inset-x-auto sm:right-4 sm:mx-0">
             <div className="flex items-center justify-between border-b border-zinc-500/10 px-4 py-3">
               <h3 className="font-semibold text-sm">Bildirimler</h3>
               <div className="flex items-center gap-1">

@@ -24,14 +24,14 @@ export default function AdminUsersPage() {
         ) : (
           <div className="space-y-3">
             {data?.map((u) => (
-              <Card key={u.id} className="flex items-center justify-between gap-4">
+              <Card key={u.id} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <StudentRow
                   name={u.full_name}
                   photoUrl={u.profile_photo_url}
                   subtitle={`@${u.username} — ${u.email}`}
                   size={40}
                 />
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                   <span className={`rounded-full px-3 py-1 text-xs font-medium ${u.role === "superadmin" ? "bg-amber-100 text-amber-700" : "bg-zinc-100 text-zinc-600"}`}>
                     {u.role}
                   </span>

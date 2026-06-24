@@ -177,7 +177,7 @@ export default function AdminGroupsPage() {
         <PageHeader title="Gruplar" subtitle="Gruba tıklayınca üyeler açılır — 10 dk önbellekte tutulur" />
         <Card className="mb-6">
           <h3 className="font-semibold mb-4">Yeni Grup</h3>
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Input placeholder="Grup adı" value={form.group_name} onChange={(e) => setForm({ ...form, group_name: e.target.value })} />
             <select
               className="rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
@@ -201,7 +201,7 @@ export default function AdminGroupsPage() {
 
         <Card className="mb-6">
           <h3 className="font-semibold mb-4">Öğrenci Ekle</h3>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <select className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm" value={memberGroup} onChange={(e) => setMemberGroup(e.target.value)}>
               <option value="">Grup seç</option>
               {(data as Group[] | undefined)?.map((g) => (

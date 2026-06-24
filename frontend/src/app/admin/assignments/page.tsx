@@ -110,7 +110,7 @@ export default function AdminAssignmentsPage() {
                 ) : (
                   submissions.map((s) => (
                     <div key={s.id} className="border-b border-zinc-100 dark:border-zinc-800 py-3">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <StudentRow
                           name={s.profiles?.full_name ?? "Öğrenci"}
                           photoUrl={s.profiles?.profile_photo_url}
