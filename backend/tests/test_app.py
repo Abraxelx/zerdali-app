@@ -64,6 +64,16 @@ def test_parent_children_unauthorized(client):
     assert response.status_code == 401
 
 
+def test_presence_online_unauthorized(client):
+    response = client.get("/presence/online")
+    assert response.status_code == 401
+
+
+def test_presence_heartbeat_unauthorized(client):
+    response = client.post("/presence/heartbeat")
+    assert response.status_code == 401
+
+
 def test_forum_unauthorized(client):
     response = client.get("/forum/groups")
     assert response.status_code == 401

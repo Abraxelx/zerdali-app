@@ -30,6 +30,7 @@ import { ThemeToggle } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { roleHomePath } from "@/lib/api";
 import { NotificationBell } from "@/lib/notifications";
+import { OnlineUsersBell } from "@/lib/presence";
 
 type NavLink = { href: string; label: string; icon: LucideIcon };
 
@@ -385,6 +386,7 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
 
           <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
             <ThemeToggle />
+            <OnlineUsersBell />
             <NotificationBell />
 
             {profileHref ? (

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AuthProvider } from "./auth";
 import { MessageProvider } from "./messages";
 import { NotificationProvider } from "./notifications";
+import { PresenceProvider } from "./presence";
 import { ThemeProvider } from "./theme";
 import { QUERY_STALE } from "./query-config";
 
@@ -31,7 +32,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider>
         <MessageProvider>
           <AuthProvider>
-            <NotificationProvider>{children}</NotificationProvider>
+            <NotificationProvider>
+              <PresenceProvider>{children}</PresenceProvider>
+            </NotificationProvider>
           </AuthProvider>
         </MessageProvider>
       </ThemeProvider>

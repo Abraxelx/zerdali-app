@@ -1,7 +1,7 @@
 import logging
 
 from config import Config
-from services import activity_service
+from services import activity_service, presence_service
 from utils.db_helpers import get_data
 from utils.errors import APIError
 from utils.supabase_client import get_supabase_admin, get_supabase_anon
@@ -35,6 +35,7 @@ def register(email: str, password: str, full_name: str, username: str) -> dict:
 
     if auth_res.session:
         activity_service.record_login(user_id)
+        presence_service.touch_presence(user_id)
 
     return {
         "user_id": user_id,
@@ -63,6 +64,7 @@ def login(
         raise APIError("Login failed", 401)
 
     activity_service.record_login(auth_res.user.id, ip_address, user_agent)
+    presence_service.touch_presence(auth_res.user.id)
 
     return {
         "access_token": auth_res.session.access_token,

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from services import auth_service
+from services import auth_service, presence_service
 from utils.request_helpers import get_client_ip, get_user_agent
 from utils.security import get_current_user, require_auth
 
@@ -42,4 +42,5 @@ def forgot_password():
 def me():
     user = get_current_user()
     auth_service.track_session(user["id"], get_client_ip(), get_user_agent())
+    presence_service.touch_presence(user["id"])
     return jsonify(user)

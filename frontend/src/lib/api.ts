@@ -60,6 +60,10 @@ export type GuardianLink = {
   profile?: Profile | null;
 };
 
+export type OnlineUser = Pick<Profile, "id" | "full_name" | "username" | "role" | "profile_photo_url"> & {
+  last_seen_at?: string | null;
+};
+
 export type StudentLevel = {
   effective_power: number;
   effective_multiplier: number;
@@ -330,4 +334,7 @@ export const api = {
     }),
   removeStudentGuardian: (studentId: string, guardianId: string) =>
     apiFetch(`/admin/students/${studentId}/guardians/${guardianId}`, { method: "DELETE" }),
+
+  presenceHeartbeat: () => apiFetch<{ ok: boolean }>("/presence/heartbeat", { method: "POST" }),
+  getOnlineUsers: () => apiFetch<OnlineUser[]>("/presence/online"),
 };
