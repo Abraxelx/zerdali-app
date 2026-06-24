@@ -1,10 +1,34 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Users, BookOpen, Gem, Zap } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardList,
+  Gem,
+  GraduationCap,
+  LogIn,
+  Sparkles,
+  UserCircle,
+  Users,
+  Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Card, LoadingSpinner, PageHeader, StatCard } from "@/components/ui";
 import { api } from "@/lib/api";
+
+const quickLinks: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/admin/groups", label: "Grup Yönetimi", icon: Users },
+  { href: "/admin/lessons", label: "Ders & Yoklama", icon: BookOpen },
+  { href: "/admin/assignments", label: "Ödev Yönetimi", icon: ClipboardList },
+  { href: "/admin/gamification", label: "Meblağ & Seviye", icon: Sparkles },
+  { href: "/admin/students", label: "Öğrenci Listesi", icon: GraduationCap },
+  { href: "/admin/users", label: "Kullanıcılar", icon: UserCircle },
+  { href: "/admin/activity", label: "Giriş Kayıtları", icon: LogIn },
+  { href: "/admin/points", label: "Puan Ver", icon: Zap },
+  { href: "/admin/profile", label: "Öğretmen Profili", icon: UserCircle },
+];
 
 function AdminDashboard() {
   const { data: users, isLoading } = useQuery({ queryKey: ["admin-users"], queryFn: () => api.getUsers() });
@@ -28,20 +52,21 @@ function AdminDashboard() {
       <Card>
         <h2 className="font-semibold mb-4">Hızlı Erişim</h2>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { href: "/admin/groups", label: "Grup Yönetimi" },
-            { href: "/admin/lessons", label: "Ders & Yoklama" },
-            { href: "/admin/assignments", label: "Ödev Yönetimi" },
-            { href: "/admin/gamification", label: "Meblağ & Seviye" },
-            { href: "/admin/users", label: "Kullanıcılar" },
-            { href: "/admin/activity", label: "Giriş Kayıtları" },
-            { href: "/admin/points", label: "Puan Ver" },
-            { href: "/admin/profile", label: "Öğretmen Profili" },
-          ].map((item) => (
-            <a key={item.href} href={item.href} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-sm font-medium">
-              {item.label}
-            </a>
-          ))}
+          {quickLinks.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 rounded-lg border border-zinc-200 p-4 text-sm font-medium transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Icon size={18} aria-hidden />
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
       </Card>
     </>
