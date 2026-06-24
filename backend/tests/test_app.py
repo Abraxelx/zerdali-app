@@ -59,6 +59,11 @@ def test_student_teachers_unauthorized(client):
     assert response.status_code == 401
 
 
+def test_parent_children_unauthorized(client):
+    response = client.get("/parent/children")
+    assert response.status_code == 401
+
+
 def test_forum_unauthorized(client):
     response = client.get("/forum/groups")
     assert response.status_code == 401

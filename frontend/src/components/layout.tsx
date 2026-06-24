@@ -28,6 +28,7 @@ import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { roleHomePath } from "@/lib/api";
 import { NotificationBell } from "@/lib/notifications";
 
 type NavLink = { href: string; label: string; icon: LucideIcon };
@@ -81,8 +82,24 @@ const adminNav: NavEntry[] = [
   { kind: "link", href: "/forum", label: "Forum", icon: MessageSquare },
 ];
 
+const parentNav: NavEntry[] = [
+  { kind: "link", href: "/parent", label: "Panel", icon: LayoutDashboard },
+  {
+    kind: "menu",
+    label: "Eğitim",
+    icon: GraduationCap,
+    items: [
+      { href: "/parent/scores", label: "Notlar", icon: FileText },
+      { href: "/parent/assignments", label: "Ödevler", icon: ClipboardList },
+      { href: "/parent/attendance", label: "Yoklama", icon: ClipboardCheck },
+    ],
+  },
+  { kind: "link", href: "/parent/forum", label: "Forum", icon: MessageSquare },
+  { kind: "link", href: "/parent/profile", label: "Profil", icon: User },
+];
+
 function isPathActive(pathname: string, href: string) {
-  if (href === "/admin" || href === "/dashboard") return pathname === href;
+  if (href === "/admin" || href === "/dashboard" || href === "/parent") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -330,16 +347,20 @@ function MobileNav({
   );
 }
 
-export function AppLayout({ children, variant }: { children: React.ReactNode; variant: "student" | "admin" }) {
+export function AppLayout({ children, variant }: { children: React.ReactNode; variant: "student" | "admin" | "parent" }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const entries = variant === "admin" ? adminNav : studentNav;
+  const entries = variant === "admin" ? adminNav : variant === "parent" ? parentNav : studentNav;
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAdmin = variant === "admin";
+  const isParent = variant === "parent";
+  const homeHref = isAdmin ? "/admin" : isParent ? "/parent" : "/dashboard";
 
   const adminExtraMobileLinks: NavLink[] = [
     { href: "/admin/profile", label: "Öğretmen Profili", icon: UserCircle },
   ];
+
+  const profileHref = isAdmin ? "/admin/profile" : isParent ? "/parent/profile" : undefined;
 
   useEffect(() => {
     setMobileOpen(false);
@@ -357,7 +378,7 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
       <header className="glass-strong sticky top-0 z-50 border-b border-white/40 dark:border-white/10">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-3 sm:h-16 sm:px-4 lg:px-6">
           <div className="shrink-0">
-            <Logo href={isAdmin ? "/admin" : "/dashboard"} size="sm" />
+            <Logo href={homeHref} size="sm" />
           </div>
 
           <DesktopNav entries={entries} pathname={pathname} />
@@ -366,10 +387,10 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
             <ThemeToggle />
             <NotificationBell />
 
-            {isAdmin ? (
+            {profileHref ? (
               <Link
-                href="/admin/profile"
-                title="Öğretmen profili"
+                href={profileHref}
+                title="Profil"
                 className="hidden rounded-lg p-0.5 transition hover:bg-zinc-500/10 lg:block"
               >
                 {user?.profile_photo_url ? (
@@ -455,7 +476,7 @@ export function AuthGuard({
   role,
 }: {
   children: React.ReactNode;
-  role?: "student" | "superadmin";
+  role?: "student" | "superadmin" | "veli";
 }) {
   const { user, loading } = useAuth();
 
@@ -474,7 +495,7 @@ export function AuthGuard({
   }
 
   if (role && user.role !== role) {
-    if (typeof window !== "undefined") window.location.href = user.role === "superadmin" ? "/admin" : "/dashboard";
+    if (typeof window !== "undefined") window.location.href = roleHomePath(user.role);
     return null;
   }
 

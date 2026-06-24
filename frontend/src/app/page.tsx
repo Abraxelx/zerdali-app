@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { roleHomePath } from "@/lib/api";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -12,7 +13,7 @@ export default function Home() {
   useEffect(() => {
     if (loading) return;
     if (!user) router.replace("/login");
-    else router.replace(user.role === "superadmin" ? "/admin" : "/dashboard");
+    else router.replace(roleHomePath(user.role));
   }, [user, loading, router]);
 
   return (

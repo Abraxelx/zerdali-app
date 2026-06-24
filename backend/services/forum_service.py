@@ -10,6 +10,15 @@ IST = ZoneInfo("Europe/Istanbul")
 PROFILE_SELECT = "id, full_name, username, profile_photo_url, role"
 
 
+def _guardian_group_ids(guardian_id: str) -> set[str]:
+    from services.guardian_service import guardian_student_ids
+
+    ids: set[str] = set()
+    for student_id in guardian_student_ids(guardian_id):
+        ids.update(_student_group_ids(student_id))
+    return ids
+
+
 def istanbul_day_bounds() -> tuple[str, str]:
     """İstanbul gün sınırları (öğrenci günlük konu limiti için)."""
     now = datetime.now(IST)
@@ -43,6 +52,10 @@ def assert_group_access(user_id: str, role: str, group_id) -> None:
     if role == "superadmin":
         get_group(gid)
         return
+    if role == "veli":
+        if gid not in _guardian_group_ids(user_id):
+            raise APIError("Bu sınıf forumuna erişimin yok", 403)
+        return
     if gid not in _student_group_ids(user_id):
         raise APIError("Bu sınıf forumuna erişimin yok", 403)
 
@@ -50,6 +63,18 @@ def assert_group_access(user_id: str, role: str, group_id) -> None:
 def list_accessible_groups(user_id: str, role: str) -> list:
     if role == "superadmin":
         return list_groups(active_only=True)
+
+    if role == "veli":
+        group_ids = _guardian_group_ids(user_id)
+        if not group_ids:
+            return []
+        groups = []
+        for gid in group_ids:
+            try:
+                groups.append(get_group(gid))
+            except APIError:
+                continue
+        return groups
 
     memberships = get_student_groups(user_id)
     groups = []
@@ -89,6 +114,8 @@ def student_topics_today_count(student_id: str) -> int:
 def get_topic_quota(user_id: str, role: str) -> dict:
     if role == "superadmin":
         return {"can_create": True, "remaining_today": None, "limit_per_day": None}
+    if role == "veli":
+        return {"can_create": False, "remaining_today": 0, "limit_per_day": 0}
     used = student_topics_today_count(user_id)
     remaining = max(0, 1 - used)
     return {"can_create": remaining > 0, "remaining_today": remaining, "limit_per_day": 1}
@@ -177,6 +204,9 @@ def create_topic(group_id, author_id: str, role: str, data: dict) -> dict:
         raise APIError("Konu metni gerekli", 422)
     if len(title) > 200:
         raise APIError("Başlık en fazla 200 karakter olabilir", 422)
+
+    if role == "veli":
+        raise APIError("Veliler forum konusu açamaz", 403)
 
     if role != "superadmin" and student_topics_today_count(author_id) >= 1:
         raise APIError("Bugün zaten bir konu açtın. Yarın tekrar deneyebilirsin.", 429)

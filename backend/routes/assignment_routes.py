@@ -45,6 +45,9 @@ def student_assignment_detail(assignment_id):
 @require_auth
 def submit_assignment(assignment_id):
     user = get_current_user()
+    if user.get("role") != "student":
+        from utils.errors import APIError
+        raise APIError("Yalnızca öğrenciler ödev teslim edebilir", 403)
     data = parse_body_data()
     file = request.files.get("file")
     return jsonify(assignment_service.submit_assignment(assignment_id, user["id"], data, file)), 201

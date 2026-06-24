@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, clearToken, Profile, setToken } from "./api";
+import { api, clearToken, Profile, roleHomePath, setToken } from "./api";
 
 type AuthContextType = {
   user: Profile | null;
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(res.access_token);
     const profile = await api.me();
     setUser(profile);
-    router.push(profile.role === "superadmin" ? "/admin" : "/dashboard");
+    router.push(roleHomePath(profile.role));
   };
 
   const register = async (data: { email: string; password: string; full_name: string; username: string }) => {

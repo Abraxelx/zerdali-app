@@ -8,7 +8,7 @@ export type Profile = {
   email: string;
   full_name: string;
   username: string;
-  role: "student" | "superadmin";
+  role: "student" | "superadmin" | "veli";
   profile_photo_url?: string;
   bio?: string;
 };
@@ -52,6 +52,13 @@ export type ClassLeaderboard = {
 };
 
 export type TeacherProfile = Pick<Profile, "id" | "full_name" | "username" | "bio" | "profile_photo_url" | "role">;
+
+export type GuardianLink = {
+  student_id: string;
+  guardian_id?: string;
+  linked_at?: string;
+  profile?: Profile | null;
+};
 
 export type StudentLevel = {
   effective_power: number;
@@ -132,6 +139,12 @@ export function setToken(token: string) {
 
 export function clearToken() {
   localStorage.removeItem("zerdali_token");
+}
+
+export function roleHomePath(role: Profile["role"]) {
+  if (role === "superadmin") return "/admin";
+  if (role === "veli") return "/parent";
+  return "/dashboard";
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -297,4 +310,24 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ body }),
     }),
+
+  // Veli (parent)
+  getParentChildren: () => apiFetch<GuardianLink[]>("/parent/children"),
+  getParentOverview: (studentId: string) => apiFetch<StudentOverview>(`/parent/students/${studentId}/overview`),
+  getParentPoints: (studentId: string) =>
+    apiFetch<{ total_zerdalyum: number; recent_transactions: unknown[] }>(`/parent/students/${studentId}/points`),
+  getParentLevel: (studentId: string) => apiFetch<StudentLevel>(`/parent/students/${studentId}/level`),
+  getParentLeaderboard: (studentId: string) => apiFetch<ClassLeaderboard[]>(`/parent/students/${studentId}/leaderboard`),
+  getParentAssignments: (studentId: string) => apiFetch<unknown[]>(`/parent/students/${studentId}/assignments`),
+  getParentScores: (studentId: string) => apiFetch<unknown[]>(`/parent/students/${studentId}/scores`),
+  getParentAttendance: (studentId: string) => apiFetch<unknown[]>(`/parent/students/${studentId}/attendance`),
+
+  getStudentGuardians: (studentId: string) => apiFetch<GuardianLink[]>(`/admin/students/${studentId}/guardians`),
+  addStudentGuardian: (studentId: string, guardianId: string) =>
+    apiFetch(`/admin/students/${studentId}/guardians`, {
+      method: "POST",
+      body: JSON.stringify({ guardian_id: guardianId }),
+    }),
+  removeStudentGuardian: (studentId: string, guardianId: string) =>
+    apiFetch(`/admin/students/${studentId}/guardians/${guardianId}`, { method: "DELETE" }),
 };

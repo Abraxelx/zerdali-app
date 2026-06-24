@@ -21,7 +21,8 @@ function formatWhen(iso: string) {
 
 function ForumShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const variant = user?.role === "superadmin" ? "admin" : "student";
+  const variant =
+    user?.role === "superadmin" ? "admin" : user?.role === "veli" ? "parent" : "student";
   return (
     <AuthGuard>
       <AppLayout variant={variant}>{children}</AppLayout>

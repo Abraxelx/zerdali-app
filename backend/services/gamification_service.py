@@ -336,7 +336,7 @@ def list_users(role: str | None = None) -> list:
 
 
 def update_user_role(user_id: str, role: str) -> dict:
-    if role not in ("student", "superadmin"):
+    if role not in ("student", "superadmin", "veli"):
         raise APIError("Invalid role", 422)
 
     db = get_supabase_admin()

@@ -21,7 +21,8 @@ function formatWhen(iso: string) {
 
 function ForumShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const variant = user?.role === "superadmin" ? "admin" : "student";
+  const variant =
+    user?.role === "superadmin" ? "admin" : user?.role === "veli" ? "parent" : "student";
   return (
     <AuthGuard>
       <AppLayout variant={variant}>{children}</AppLayout>
@@ -76,7 +77,8 @@ export default function ForumPage() {
   const [body, setBody] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const canCreate = !!selectedGroupId && (quota?.can_create ?? false);
+  const isParent = user?.role === "veli";
+  const canCreate = !isParent && !!selectedGroupId && (quota?.can_create ?? false);
   const isAdmin = user?.role === "superadmin";
 
   const handleCreate = async () => {
@@ -119,7 +121,9 @@ export default function ForumPage() {
           <p className="text-center text-zinc-500 py-8">
             {isAdmin
               ? "Henüz aktif sınıf yok. Önce gruplar sayfasından sınıf oluştur."
-              : "Henüz bir sınıfa kayıtlı değilsin. Öğretmeninden gruba eklenmeni iste."}
+              : isParent
+                ? "Bağlı öğrencinin kayıtlı olduğu bir sınıf forumu yok."
+                : "Henüz bir sınıfa kayıtlı değilsin. Öğretmeninden gruba eklenmeni iste."}
           </p>
         </Card>
       </ForumShell>
@@ -158,11 +162,13 @@ export default function ForumPage() {
           </select>
         </label>
         <p className="text-xs text-zinc-500 mt-2">
-          {isAdmin
-            ? "Her sınıfın kendi forumu vardır — sınırsız konu açabilirsin."
-            : quota?.can_create
-              ? "Bugün 1 konu açma hakkın var (tüm sınıflar toplamında)."
-              : "Bugünkü konu hakkını kullandın — yarın tekrar deneyebilirsin."}
+          {isParent
+            ? "Veli olarak konu açamazsın; yorum yazabilirsin."
+            : isAdmin
+              ? "Her sınıfın kendi forumu vardır — sınırsız konu açabilirsin."
+              : quota?.can_create
+                ? "Bugün 1 konu açma hakkın var (tüm sınıflar toplamında)."
+                : "Bugünkü konu hakkını kullandın — yarın tekrar deneyebilirsin."}
         </p>
       </Card>
 

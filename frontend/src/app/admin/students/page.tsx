@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Gem, Trash2, Trophy } from "lucide-react";
+import { ChevronRight, Gem, Trash2, Trophy, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import {
@@ -15,7 +15,7 @@ import {
   StudentAvatar,
   StudentRow,
 } from "@/components/ui";
-import { api, StudentMeblah, StudentOverview, StudentSummary } from "@/lib/api";
+import { api, GuardianLink, Profile, StudentMeblah, StudentOverview, StudentSummary } from "@/lib/api";
 import { showApiError, useMessage } from "@/lib/messages";
 import { QUERY_STALE } from "@/lib/query-config";
 
@@ -31,8 +31,18 @@ function StudentDetail({ studentId, onUpdated }: { studentId: string; onUpdated:
     queryFn: () => api.getMeblahTypes() as Promise<{ id: string; name: string; rarity: string }[]>,
     staleTime: QUERY_STALE.staticCatalog,
   });
+  const { data: guardians, refetch: refetchGuardians } = useQuery({
+    queryKey: ["student-guardians", studentId],
+    queryFn: () => api.getStudentGuardians(studentId),
+  });
+  const { data: veliUsers } = useQuery({
+    queryKey: ["admin-users-veli"],
+    queryFn: () => api.getUsers("veli"),
+    staleTime: QUERY_STALE.staticCatalog,
+  });
 
   const [pointAmount, setPointAmount] = useState("");
+  const [selectedGuardianId, setSelectedGuardianId] = useState("");
   const [pointDesc, setPointDesc] = useState("");
   const [grantMeblahId, setGrantMeblahId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -94,6 +104,43 @@ function StudentDetail({ studentId, onUpdated }: { studentId: string; onUpdated:
       setBusy(false);
     }
   };
+
+  const addGuardian = async () => {
+    if (!selectedGuardianId) {
+      msg.error("Veli seç", "Listeden veli rolündeki bir kullanıcı seç.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.addStudentGuardian(studentId, selectedGuardianId);
+      setSelectedGuardianId("");
+      refetchGuardians();
+      msg.success("Veli atandı");
+    } catch (e) {
+      showApiError(msg, e, "Veli atanamadı");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeGuardian = async (guardianId: string) => {
+    if (!confirm("Bu veli bağlantısını kaldırmak istediğine emin misin?")) return;
+    setBusy(true);
+    try {
+      await api.removeStudentGuardian(studentId, guardianId);
+      refetchGuardians();
+      msg.success("Veli bağlantısı kaldırıldı");
+    } catch (e) {
+      showApiError(msg, e, "Veli kaldırılamadı");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const linkedGuardianIds = new Set((guardians ?? []).map((g) => g.guardian_id));
+  const availableVelis = ((veliUsers as Profile[] | undefined) ?? []).filter(
+    (u) => !linkedGuardianIds.has(u.id)
+  );
 
   if (isLoading || !overview) return <LoadingSpinner />;
 
@@ -185,6 +232,66 @@ function StudentDetail({ studentId, onUpdated }: { studentId: string; onUpdated:
               ))}
             </ul>
           </div>
+        )}
+      </Card>
+
+      <Card>
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Users size={18} className="text-blue-500" />
+          Veliler ({guardians?.length ?? 0})
+        </h3>
+        <p className="text-xs text-zinc-500 mb-3">
+          Veli rolündeki kullanıcıları bu öğrenciye ata. Bir öğrencinin birden fazla velisi olabilir.
+        </p>
+        <div className="space-y-2 mb-4">
+          {(guardians as GuardianLink[] | undefined)?.length ? (
+            (guardians as GuardianLink[]).map((g) => (
+              <div
+                key={g.guardian_id}
+                className="flex items-center justify-between gap-3 rounded-lg bg-zinc-500/5 px-3 py-2"
+              >
+                <StudentRow
+                  name={g.profile?.full_name ?? "Veli"}
+                  photoUrl={g.profile?.profile_photo_url}
+                  subtitle={g.profile ? `@${g.profile.username}` : undefined}
+                  size={36}
+                />
+                <button
+                  type="button"
+                  onClick={() => g.guardian_id && removeGuardian(g.guardian_id)}
+                  className="rounded-full bg-red-500 p-1.5 text-white hover:bg-red-600 shrink-0"
+                  title="Veliyi kaldır"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-zinc-500">Henüz veli atanmadı</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <select
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm"
+            value={selectedGuardianId}
+            onChange={(e) => setSelectedGuardianId(e.target.value)}
+          >
+            <option value="">Veli kullanıcı seç</option>
+            {availableVelis.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name} (@{u.username})
+              </option>
+            ))}
+          </select>
+          <Button className="shrink-0 inline-flex items-center gap-2" onClick={addGuardian} disabled={busy}>
+            <UserPlus size={16} />
+            Ata
+          </Button>
+        </div>
+        {availableVelis.length === 0 && !(guardians?.length) && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+            Önce Kullanıcılar sayfasından bir kullanıcıyı veli rolüne çek.
+          </p>
         )}
       </Card>
 
