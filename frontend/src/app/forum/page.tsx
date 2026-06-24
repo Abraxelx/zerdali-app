@@ -8,6 +8,7 @@ import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, Input, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api, ForumGroup, ForumTopic, normalizeGroupId } from "@/lib/api";
+import { getStoredForumGroupId, resolveForumGroupId, setStoredForumGroupId } from "@/lib/forum-group-storage";
 import { showApiError, useMessage } from "@/lib/messages";
 import { QUERY_STALE } from "@/lib/query-config";
 
@@ -42,11 +43,23 @@ export default function ForumPage() {
   });
 
   const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const forumScope = user?.id;
 
   useEffect(() => {
-    if (!groups?.length || selectedGroupId) return;
-    setSelectedGroupId(normalizeGroupId(groups[0].id));
-  }, [groups, selectedGroupId]);
+    if (!groups?.length) return;
+    setSelectedGroupId((prev) => resolveForumGroupId(groups as ForumGroup[], forumScope, prev));
+  }, [groups, forumScope]);
+
+  const selectGroup = (groupId: string) => {
+    setSelectedGroupId(groupId);
+    setStoredForumGroupId(groupId, forumScope);
+    setShowForm(false);
+  };
 
   const selectedGroup = useMemo(
     () =>
@@ -71,11 +84,6 @@ export default function ForumPage() {
     queryKey: ["forum-quota"],
     queryFn: api.getForumQuota,
   });
-
-  const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [creating, setCreating] = useState(false);
 
   const isParent = user?.role === "veli";
   const canCreate = !isParent && !!selectedGroupId && (quota?.can_create ?? false);
@@ -149,10 +157,7 @@ export default function ForumPage() {
           <select
             className="w-full max-w-md rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
             value={selectedGroupId}
-            onChange={(e) => {
-              setSelectedGroupId(e.target.value);
-              setShowForm(false);
-            }}
+            onChange={(e) => selectGroup(e.target.value)}
           >
             {(groups as ForumGroup[]).map((g) => (
               <option key={normalizeGroupId(g.id)} value={normalizeGroupId(g.id)}>

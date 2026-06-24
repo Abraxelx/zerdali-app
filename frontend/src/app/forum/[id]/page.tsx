@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, LoadingSpinner, StudentRow } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { api, ForumComment, ForumTopicDetail } from "@/lib/api";
+import { api, ForumComment, ForumTopicDetail, normalizeGroupId } from "@/lib/api";
+import { setStoredForumGroupId } from "@/lib/forum-group-storage";
 import { showApiError, useMessage } from "@/lib/messages";
 
 function formatWhen(iso: string) {
@@ -53,6 +54,7 @@ function CommentBlock({ comment }: { comment: ForumComment }) {
 export default function ForumTopicPage() {
   const params = useParams();
   const topicId = params.id as string;
+  const { user } = useAuth();
   const msg = useMessage();
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
@@ -63,6 +65,13 @@ export default function ForumTopicPage() {
     queryFn: () => api.getForumTopic(topicId),
     enabled: !!topicId,
   });
+
+  useEffect(() => {
+    const groupId = (topic as ForumTopicDetail | undefined)?.group?.id;
+    if (groupId && user?.id) {
+      setStoredForumGroupId(normalizeGroupId(groupId), user.id);
+    }
+  }, [topic, user?.id]);
 
   const handleComment = async () => {
     const text = comment.trim();

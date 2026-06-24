@@ -7,6 +7,8 @@ import { MessageSquare, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Card, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
 import { api, ForumGroup, ForumTopic, normalizeGroupId } from "@/lib/api";
+import { resolveForumGroupId, setStoredForumGroupId } from "@/lib/forum-group-storage";
+import { useAuth } from "@/lib/auth";
 import { ParentProvider, ParentRequireStudent, ParentStudentPicker, useParentStudent } from "@/lib/parent";
 import { QUERY_STALE } from "@/lib/query-config";
 
@@ -19,7 +21,9 @@ function formatWhen(iso: string) {
 }
 
 function ParentForumContent() {
+  const { user } = useAuth();
   const { selectedId } = useParentStudent();
+  const forumScope = user?.id;
 
   const { data: groups, isLoading: loadingGroups } = useQuery({
     queryKey: ["forum-groups", selectedId],
@@ -35,11 +39,13 @@ function ParentForumContent() {
       setSelectedGroupId("");
       return;
     }
-    const first = normalizeGroupId(groups[0].id);
-    setSelectedGroupId((prev) =>
-      prev && (groups as ForumGroup[]).some((g) => normalizeGroupId(g.id) === prev) ? prev : first
-    );
-  }, [groups]);
+    setSelectedGroupId((prev) => resolveForumGroupId(groups as ForumGroup[], forumScope, prev));
+  }, [groups, forumScope]);
+
+  const selectGroup = (groupId: string) => {
+    setSelectedGroupId(groupId);
+    if (forumScope) setStoredForumGroupId(groupId, forumScope);
+  };
 
   const selectedGroup = useMemo(
     () => (groups as ForumGroup[] | undefined)?.find((g) => normalizeGroupId(g.id) === selectedGroupId),
@@ -74,7 +80,7 @@ function ParentForumContent() {
           <select
             className="w-full max-w-md rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
             value={selectedGroupId}
-            onChange={(e) => setSelectedGroupId(e.target.value)}
+            onChange={(e) => selectGroup(e.target.value)}
           >
             {(groups as ForumGroup[]).map((g) => (
               <option key={normalizeGroupId(g.id)} value={normalizeGroupId(g.id)}>
