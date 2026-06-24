@@ -2,59 +2,281 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { NotificationBell } from "@/lib/notifications";
 
-type NavLink = {
-  href: string;
-  label: string;
-  shortLabel?: string;
-};
+type NavLink = { href: string; label: string };
 
-const studentLinks: NavLink[] = [
-  { href: "/dashboard", label: "Panel" },
-  { href: "/lessons", label: "Dersler" },
-  { href: "/attendance", label: "Yoklama" },
-  { href: "/scores", label: "Notlar" },
-  { href: "/assignments", label: "Ödevler" },
-  { href: "/forum", label: "Forum" },
-  { href: "/profile", label: "Profil" },
+type NavEntry =
+  | { kind: "link"; href: string; label: string }
+  | { kind: "menu"; label: string; items: NavLink[] };
+
+const studentNav: NavEntry[] = [
+  { kind: "link", href: "/dashboard", label: "Panel" },
+  {
+    kind: "menu",
+    label: "Eğitim",
+    items: [
+      { href: "/lessons", label: "Dersler" },
+      { href: "/attendance", label: "Yoklama" },
+      { href: "/scores", label: "Notlar" },
+      { href: "/assignments", label: "Ödevler" },
+    ],
+  },
+  { kind: "link", href: "/forum", label: "Forum" },
+  { kind: "link", href: "/profile", label: "Profil" },
 ];
 
-const adminLinks: NavLink[] = [
-  { href: "/admin", label: "Panel" },
-  { href: "/admin/groups", label: "Gruplar" },
-  { href: "/admin/lessons", label: "Dersler" },
-  { href: "/admin/assignments", label: "Ödevler" },
-  { href: "/admin/approvals", label: "Ödev Onay" },
-  { href: "/forum", label: "Forum" },
-  { href: "/admin/gamification", label: "Oyunlaştırma", shortLabel: "Oyun" },
-  { href: "/admin/students", label: "Öğrenciler" },
-  { href: "/admin/users", label: "Kullanıcılar" },
-  { href: "/admin/activity", label: "Giriş Kayıtları", shortLabel: "Girişler" },
-  { href: "/admin/points", label: "Puanlar" },
-  { href: "/admin/profile", label: "Profil", shortLabel: "Profil" },
+const adminNav: NavEntry[] = [
+  { kind: "link", href: "/admin", label: "Panel" },
+  {
+    kind: "menu",
+    label: "Eğitim",
+    items: [
+      { href: "/admin/groups", label: "Gruplar" },
+      { href: "/admin/lessons", label: "Dersler" },
+      { href: "/admin/assignments", label: "Ödevler" },
+      { href: "/admin/approvals", label: "Ödev Onay" },
+    ],
+  },
+  {
+    kind: "menu",
+    label: "Öğrenciler",
+    items: [
+      { href: "/admin/students", label: "Öğrenci Listesi" },
+      { href: "/admin/users", label: "Kullanıcılar" },
+      { href: "/admin/points", label: "Puan Ver" },
+      { href: "/admin/activity", label: "Giriş Kayıtları" },
+    ],
+  },
+  { kind: "link", href: "/admin/gamification", label: "Oyun" },
+  { kind: "link", href: "/forum", label: "Forum" },
 ];
 
-function navLinkClass(active: boolean) {
-  return `shrink-0 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap transition ${
+function isPathActive(pathname: string, href: string) {
+  if (href === "/admin" || href === "/dashboard") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function isMenuActive(pathname: string, items: NavLink[]) {
+  return items.some((item) => isPathActive(pathname, item.href));
+}
+
+function navItemClass(active: boolean) {
+  return `inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition ${
     active
       ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
       : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
   }`;
 }
 
+function NavDropdown({
+  label,
+  items,
+  pathname,
+  onNavigate,
+}: {
+  label: string;
+  items: NavLink[];
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = isMenuActive(pathname, items);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={navItemClass(active)}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        {label}
+        <ChevronDown size={14} className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-[60] min-w-[12rem] rounded-xl border border-white/50 bg-white/95 py-1 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95">
+          {items.map((item) => {
+            const itemActive = isPathActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => {
+                  setOpen(false);
+                  onNavigate?.();
+                }}
+                className={`block px-3 py-2 text-sm transition ${
+                  itemActive
+                    ? "bg-amber-500/10 font-medium text-amber-600 dark:text-amber-400"
+                    : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DesktopNav({ entries, pathname }: { entries: NavEntry[]; pathname: string }) {
+  return (
+    <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex" aria-label="Ana menü">
+      {entries.map((entry) =>
+        entry.kind === "link" ? (
+          <Link
+            key={entry.href}
+            href={entry.href}
+            className={navItemClass(isPathActive(pathname, entry.href))}
+          >
+            {entry.label}
+          </Link>
+        ) : (
+          <NavDropdown key={entry.label} label={entry.label} items={entry.items} pathname={pathname} />
+        )
+      )}
+    </nav>
+  );
+}
+
+function MobileNavGroup({
+  label,
+  items,
+  pathname,
+  onClose,
+  defaultOpen,
+}: {
+  label: string;
+  items: NavLink[];
+  pathname: string;
+  onClose: () => void;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  const active = isMenuActive(pathname, items);
+
+  return (
+    <div className="rounded-xl border border-zinc-500/10 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium transition ${
+          active ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "text-zinc-700 dark:text-zinc-200"
+        }`}
+      >
+        {label}
+        <ChevronDown size={16} className={`transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="border-t border-zinc-500/10 bg-zinc-500/5 px-1 py-1 dark:bg-white/5">
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={`block rounded-lg px-3 py-2 text-sm transition ${
+                isPathActive(pathname, item.href)
+                  ? "bg-amber-500/15 font-medium text-amber-600 dark:text-amber-400"
+                  : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileNav({
+  entries,
+  pathname,
+  onClose,
+  extraLinks,
+}: {
+  entries: NavEntry[];
+  pathname: string;
+  onClose: () => void;
+  extraLinks?: NavLink[];
+}) {
+  return (
+    <nav className="space-y-1.5 p-3 sm:p-4" aria-label="Mobil menü">
+      {entries.map((entry) =>
+        entry.kind === "link" ? (
+          <Link
+            key={entry.href}
+            href={entry.href}
+            onClick={onClose}
+            className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+              isPathActive(pathname, entry.href)
+                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
+            }`}
+          >
+            {entry.label}
+          </Link>
+        ) : (
+          <MobileNavGroup
+            key={entry.label}
+            label={entry.label}
+            items={entry.items}
+            pathname={pathname}
+            onClose={onClose}
+            defaultOpen={isMenuActive(pathname, entry.items)}
+          />
+        )
+      )}
+      {extraLinks?.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          onClick={onClose}
+          className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+            isPathActive(pathname, link.href)
+              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+              : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
+          }`}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 export function AppLayout({ children, variant }: { children: React.ReactNode; variant: "student" | "admin" }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const links = variant === "admin" ? adminLinks : studentLinks;
+  const entries = variant === "admin" ? adminNav : studentNav;
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAdmin = variant === "admin";
+
+  const adminExtraMobileLinks: NavLink[] = [{ href: "/admin/profile", label: "Öğretmen Profili" }];
 
   useEffect(() => {
     setMobileOpen(false);
@@ -67,57 +289,59 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
     };
   }, [mobileOpen]);
 
-  const desktopNavClass = isAdmin
-    ? "hidden xl:flex min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto px-1 scrollbar-hide"
-    : "hidden lg:flex min-w-0 flex-1 items-center justify-center gap-1 flex-wrap px-2";
-
-  const mobileToggleClass = isAdmin ? "xl:hidden" : "lg:hidden";
-  const mobileNavClass = isAdmin ? "xl:hidden" : "lg:hidden";
-
   return (
     <div className="min-h-screen overflow-x-hidden">
       <header className="glass-strong sticky top-0 z-50 border-b border-white/40 dark:border-white/10">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-3 sm:h-16 sm:px-4 lg:px-6">
           <div className="shrink-0">
-            <Logo href={variant === "admin" ? "/admin" : "/dashboard"} size="sm" />
+            <Logo href={isAdmin ? "/admin" : "/dashboard"} size="sm" />
           </div>
 
-          <nav className={desktopNavClass} aria-label="Ana menü">
-            {links.map((link) => {
-              const active = pathname === link.href;
-              const text = isAdmin ? (link.shortLabel ?? link.label) : link.label;
-              return (
-                <Link key={link.href} href={link.href} className={navLinkClass(active)} title={link.label}>
-                  {text}
-                </Link>
-              );
-            })}
-          </nav>
+          <DesktopNav entries={entries} pathname={pathname} />
 
-          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
             <ThemeToggle />
             <NotificationBell />
-            {user?.profile_photo_url ? (
+
+            {isAdmin ? (
+              <Link
+                href="/admin/profile"
+                title="Öğretmen profili"
+                className="hidden rounded-lg p-0.5 transition hover:bg-zinc-500/10 lg:block"
+              >
+                {user?.profile_photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profile_photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+                    {user?.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+                  </div>
+                )}
+              </Link>
+            ) : user?.profile_photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.profile_photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+              <img src={user.profile_photo_url} alt="" className="hidden h-8 w-8 rounded-full object-cover lg:block" />
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+              <div className="hidden h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-600 dark:bg-amber-950 dark:text-amber-400 lg:flex">
                 {user?.full_name?.charAt(0)?.toUpperCase() ?? "?"}
               </div>
             )}
-            <span className="hidden max-w-[8rem] truncate text-sm text-zinc-500 md:block lg:max-w-[10rem]">
+
+            <span className="hidden max-w-[7rem] truncate text-sm text-zinc-500 xl:block xl:max-w-[9rem]">
               {user?.full_name}
             </span>
+
             <button
               onClick={logout}
-              className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-500/10 hover:text-red-500"
+              className="hidden rounded-lg p-2 text-zinc-500 hover:bg-zinc-500/10 hover:text-red-500 sm:block"
               aria-label="Çıkış yap"
             >
               <LogOut size={18} />
             </button>
+
             <button
               onClick={() => setMobileOpen((open) => !open)}
-              className={`rounded-lg p-2 text-zinc-500 hover:bg-zinc-500/10 ${mobileToggleClass}`}
+              className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-500/10 lg:hidden"
               aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
               aria-expanded={mobileOpen}
             >
@@ -125,35 +349,40 @@ export function AppLayout({ children, variant }: { children: React.ReactNode; va
             </button>
           </div>
         </div>
-
-        {mobileOpen && (
-          <nav
-            className={`${mobileNavClass} max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/30 p-3 sm:p-4 dark:border-white/10`}
-            aria-label="Mobil menü"
-          >
-            <div className="mx-auto max-w-7xl space-y-1">
-              {links.map((link) => {
-                const active = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                      active
-                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                        : "text-zinc-600 hover:bg-zinc-500/10 dark:text-zinc-300"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-        )}
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+
+      {mobileOpen && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[45] bg-black/40 backdrop-blur-[1px] lg:hidden"
+            aria-label="Menüyü kapat"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="fixed left-0 right-0 top-14 z-[46] max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b border-white/30 bg-white/95 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/95 sm:top-16 sm:max-h-[calc(100dvh-4rem)] lg:hidden">
+            <MobileNav
+              entries={entries}
+              pathname={pathname}
+              onClose={() => setMobileOpen(false)}
+              extraLinks={isAdmin ? adminExtraMobileLinks : undefined}
+            />
+            <div className="border-t border-zinc-500/10 px-3 py-3 sm:px-4 sm:hidden">
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  logout();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-500/10 px-3 py-2.5 text-sm font-medium text-red-500"
+              >
+                <LogOut size={16} />
+                Çıkış yap
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-4 sm:py-8 lg:px-6">{children}</main>
     </div>
   );
 }
