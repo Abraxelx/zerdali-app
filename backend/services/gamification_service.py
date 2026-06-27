@@ -223,6 +223,105 @@ def get_student_class_leaderboards(student_id: str) -> list:
     return boards
 
 
+PUBLIC_STUDENT_PROFILE_FIELDS = ("id", "full_name", "username", "bio", "profile_photo_url", "role")
+
+
+def _public_profile(profile: dict) -> dict:
+    return {key: profile.get(key) for key in PUBLIC_STUDENT_PROFILE_FIELDS}
+
+
+def _student_group_ids(student_id: str) -> set[str]:
+    from services import group_service
+
+    group_ids: set[str] = set()
+    for membership in group_service.get_student_groups(student_id):
+        embedded = membership.get("student_groups") or {}
+        group_id = membership.get("group_id") or embedded.get("id")
+        if group_id is not None:
+            group_ids.add(str(group_id))
+    return group_ids
+
+
+def students_share_group(student_a: str, student_b: str) -> bool:
+    if student_a == student_b:
+        return True
+    return bool(_student_group_ids(student_a) & _student_group_ids(student_b))
+
+
+def list_classmates(student_id: str) -> dict:
+    from services import group_service
+
+    groups = []
+    for membership in group_service.get_student_groups(student_id):
+        embedded = membership.get("student_groups") or {}
+        group_id = membership.get("group_id") or embedded.get("id")
+        if group_id is None:
+            continue
+        group_name = embedded.get("group_name") or "Sınıf"
+        classmates = []
+        for member in group_service.get_group_members(str(group_id)):
+            profile = member.get("profiles") or {}
+            if not profile or profile.get("id") == student_id:
+                continue
+            classmates.append(_public_profile(profile))
+        classmates.sort(key=lambda item: (item.get("full_name") or "").lower())
+        groups.append(
+            {
+                "group_id": str(group_id),
+                "group_name": group_name,
+                "classmates": classmates,
+            }
+        )
+    return {"groups": groups}
+
+
+def get_classmate_public_profile(viewer_id: str, target_id: str) -> dict:
+    from services import group_service, point_service
+
+    if not students_share_group(viewer_id, target_id):
+        raise APIError("Bu profile erişim yetkin yok", 403)
+
+    db = get_supabase_admin()
+    profile_res = (
+        db.table("profiles")
+        .select(",".join(PUBLIC_STUDENT_PROFILE_FIELDS))
+        .eq("id", target_id)
+        .maybe_single()
+        .execute()
+    )
+    profile_data = get_data(profile_res)
+    if not profile_data:
+        raise APIError("Öğrenci bulunamadı", 404)
+    if profile_data.get("role") != "student":
+        raise APIError("Kullanıcı öğrenci değil", 422)
+
+    viewer_groups = _student_group_ids(viewer_id)
+    target_groups = _student_group_ids(target_id)
+    shared_ids = viewer_groups & target_groups
+    shared_groups = []
+    for membership in group_service.get_student_groups(target_id):
+        embedded = membership.get("student_groups") or {}
+        group_id = membership.get("group_id") or embedded.get("id")
+        if group_id is None or str(group_id) not in shared_ids:
+            continue
+        shared_groups.append(
+            {
+                "group_id": str(group_id),
+                "group_name": embedded.get("group_name") or "Sınıf",
+            }
+        )
+
+    points = point_service.get_student_points(target_id)
+    return {
+        "profile": profile_data,
+        "points": {"total_zerdalyum": points.get("total_zerdalyum", 0)},
+        "level": get_student_level(target_id),
+        "meblahs": get_student_meblahs(target_id),
+        "shared_groups": shared_groups,
+        "is_me": viewer_id == target_id,
+    }
+
+
 def get_student_overview(student_id: str) -> dict:
     db = get_supabase_admin()
     profile = db.table("profiles").select("*").eq("id", student_id).maybe_single().execute()

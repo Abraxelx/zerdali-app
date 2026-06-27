@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Gem, GraduationCap, Medal, Star, Trophy, Zap } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
@@ -60,19 +61,26 @@ function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
   return (
     <div className="space-y-2">
       {entries.map((entry) => (
-        <div
+        <Link
           key={entry.profile.id}
+          href={entry.is_me ? "/profile" : `/students/${entry.profile.id}`}
           className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
             entry.is_me
               ? "border border-amber-400/50 bg-amber-500/10"
-              : "bg-zinc-50 dark:bg-zinc-800/50"
+              : "bg-zinc-50 hover:bg-amber-500/10 dark:bg-zinc-800/50 dark:hover:bg-amber-500/10"
           }`}
         >
           <RankBadge rank={entry.rank ?? 0} />
           <StudentRow
             name={entry.profile.full_name}
             photoUrl={entry.profile.profile_photo_url}
-            subtitle={`${entry.total_zerdalyum} Z · ${Math.round(entry.effective_power)} güç`}
+            subtitle={
+              entry.profile.bio
+                ? entry.profile.bio.length > 60
+                  ? `${entry.profile.bio.slice(0, 60)}…`
+                  : entry.profile.bio
+                : `${entry.total_zerdalyum} Z · ${Math.round(entry.effective_power)} güç`
+            }
             size={36}
             className="flex-1"
           />
@@ -82,7 +90,7 @@ function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
             </span>
           )}
           {entry.rank === 1 && <Medal size={16} className="shrink-0 text-amber-500" />}
-        </div>
+        </Link>
       ))}
     </div>
   );

@@ -54,6 +54,7 @@ const studentNav: NavEntry[] = [
     ],
   },
   { kind: "link", href: "/forum", label: "Forum", icon: MessageSquare },
+  { kind: "link", href: "/classmates", label: "Sınıf", icon: Users },
   { kind: "link", href: "/games/2048", label: "2048", icon: Gamepad2 },
   { kind: "link", href: "/profile", label: "Profil", icon: User },
 ];

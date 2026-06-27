@@ -53,6 +53,26 @@ def student_leaderboard():
     return jsonify(gamification_service.get_student_class_leaderboards(user["id"]))
 
 
+@gamification_bp.route("/student/classmates", methods=["GET"])
+@require_auth
+def student_classmates():
+    user = get_current_user()
+    if user.get("role") != "student":
+        from utils.errors import APIError
+        raise APIError("Yalnızca öğrenciler sınıf arkadaşlarını görebilir", 403)
+    return jsonify(gamification_service.list_classmates(user["id"]))
+
+
+@gamification_bp.route("/student/classmates/<student_id>", methods=["GET"])
+@require_auth
+def student_classmate_profile(student_id):
+    user = get_current_user()
+    if user.get("role") != "student":
+        from utils.errors import APIError
+        raise APIError("Yalnızca öğrenciler sınıf arkadaşlarını görebilir", 403)
+    return jsonify(gamification_service.get_classmate_public_profile(user["id"], student_id))
+
+
 # --- Admin endpoints ---
 @gamification_bp.route("/admin/students/summary", methods=["GET"])
 @require_role("superadmin")

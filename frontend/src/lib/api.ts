@@ -51,6 +51,27 @@ export type ClassLeaderboard = {
   leaderboard: LeaderboardEntry[];
 };
 
+export type ClassmateProfile = Pick<Profile, "id" | "full_name" | "username" | "bio" | "profile_photo_url" | "role">;
+
+export type ClassmateGroup = {
+  group_id: string;
+  group_name: string;
+  classmates: ClassmateProfile[];
+};
+
+export type ClassmateList = {
+  groups: ClassmateGroup[];
+};
+
+export type ClassmatePublicProfile = {
+  profile: ClassmateProfile;
+  points: { total_zerdalyum: number };
+  level: StudentLevel;
+  meblahs: StudentMeblah[];
+  shared_groups: { group_id: string; group_name: string }[];
+  is_me?: boolean;
+};
+
 export type TeacherProfile = Pick<Profile, "id" | "full_name" | "username" | "bio" | "profile_photo_url" | "role">;
 
 export type GuardianLink = {
@@ -320,6 +341,9 @@ export const api = {
   getGroups: () => apiFetch<unknown[]>("/student/groups"),
   getTeachers: () => apiFetch<TeacherProfile[]>("/student/teachers"),
   getClassLeaderboard: () => apiFetch<ClassLeaderboard[]>("/student/leaderboard"),
+  getClassmates: () => apiFetch<ClassmateList>("/student/classmates"),
+  getClassmateProfile: (studentId: string) =>
+    apiFetch<ClassmatePublicProfile>(`/student/classmates/${studentId}`),
   getGame2048Stats: () => apiFetch<Game2048Stats>("/games/2048/stats"),
   getGame2048Quota: () => apiFetch<Game2048Quota>("/games/2048/quota"),
   getGame2048Leaderboard: () => apiFetch<Game2048Leaderboard>("/games/2048/leaderboard"),
