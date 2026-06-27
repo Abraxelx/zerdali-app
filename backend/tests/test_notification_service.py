@@ -27,3 +27,13 @@ def test_forum_comment_href_parent():
         "veli",
     )
     assert href == "/parent/forum/abc-123"
+
+
+def test_forum_like_href():
+    href = resolve_notification_href("FORUM_LIKE", {"topic_id": "abc-123"}, "student")
+    assert href == "/forum/abc-123"
+
+
+def test_forum_dislike_href_parent():
+    href = resolve_notification_href("FORUM_DISLIKE", {"topic_id": "abc-123"}, "veli")
+    assert href == "/parent/forum/abc-123"

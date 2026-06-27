@@ -37,6 +37,15 @@ def resolve_notification_href(ntype: str, data: dict | None, role: str) -> str |
             return path
         return "/parent/forum" if role == "veli" else "/forum"
 
+    if ntype in ("FORUM_LIKE", "FORUM_DISLIKE"):
+        topic_id = d.get("topic_id")
+        if topic_id:
+            path = f"/forum/{topic_id}"
+            if role == "veli":
+                path = f"/parent/forum/{topic_id}"
+            return path
+        return "/parent/forum" if role == "veli" else "/forum"
+
     if ntype == "HOMEWORK_SUBMITTED":
         if role != "superadmin":
             return None

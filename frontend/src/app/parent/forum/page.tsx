@@ -5,7 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Card, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
+import { Card, LoadingSpinner, PageHeader } from "@/components/ui";
+import { ForumAuthorRow, ForumTagBadge } from "@/components/forum";
 import { api, ForumGroup, ForumTopic, normalizeGroupId } from "@/lib/api";
 import { resolveForumGroupId, setStoredForumGroupId } from "@/lib/forum-group-storage";
 import { useAuth } from "@/lib/auth";
@@ -106,19 +107,18 @@ function ParentForumContent() {
                     <MessageSquare size={22} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">{topic.title}</h3>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-lg truncate">{topic.title}</h3>
+                      {topic.tag && <ForumTagBadge tag={topic.tag} />}
+                    </div>
                     <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{topic.body}</p>
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
                       {topic.author && (
-                        <StudentRow
-                          name={topic.author.full_name}
-                          photoUrl={topic.author.profile_photo_url}
-                          size={24}
-                          className="!gap-2"
-                        />
+                        <ForumAuthorRow author={topic.author} size={24} className="!gap-2" />
                       )}
                       <span>{formatWhen(topic.created_at)}</span>
                       <span>{topic.comment_count ?? 0} yorum</span>
+                      <span>{topic.reactions?.like_count ?? 0} beğeni</span>
                     </div>
                   </div>
                 </div>

@@ -40,6 +40,12 @@ export function notificationHref(
       if (topicId) return isParent ? `/parent/forum/${topicId}` : `/forum/${topicId}`;
       return isParent ? "/parent/forum" : "/forum";
     }
+    case "FORUM_LIKE":
+    case "FORUM_DISLIKE": {
+      const topicId = d.topic_id != null ? String(d.topic_id) : null;
+      if (topicId) return isParent ? `/parent/forum/${topicId}` : `/forum/${topicId}`;
+      return isParent ? "/parent/forum" : "/forum";
+    }
     case "HOMEWORK_SUBMITTED":
       if (!isAdmin) return null;
       if (d.submission_id) return `/admin/approvals?submission=${d.submission_id}`;

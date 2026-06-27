@@ -5,9 +5,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, Plus, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, Input, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
+import { Button, Card, Input, LoadingSpinner, PageHeader } from "@/components/ui";
+import { ForumAuthorRow, ForumTagBadge, ForumTagField } from "@/components/forum";
 import { useAuth } from "@/lib/auth";
-import { api, ForumGroup, ForumTopic, normalizeGroupId } from "@/lib/api";
+import { api, ForumGroup, ForumTag, ForumTopic, normalizeGroupId } from "@/lib/api";
 import { getStoredForumGroupId, resolveForumGroupId, setStoredForumGroupId } from "@/lib/forum-group-storage";
 import { showApiError, useMessage } from "@/lib/messages";
 import { QUERY_STALE } from "@/lib/query-config";
@@ -46,6 +47,7 @@ export default function ForumPage() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [tagLabel, setTagLabel] = useState("Genel");
   const [creating, setCreating] = useState(false);
 
   const forumScope = user?.id;
@@ -85,6 +87,11 @@ export default function ForumPage() {
     queryFn: api.getForumQuota,
   });
 
+  const { data: tags } = useQuery({
+    queryKey: ["forum-tags"],
+    queryFn: api.getForumTags,
+  });
+
   const isParent = user?.role === "veli";
   const canCreate = !isParent && !!selectedGroupId && (quota?.can_create ?? false);
   const isAdmin = user?.role === "superadmin";
@@ -97,14 +104,20 @@ export default function ForumPage() {
       msg.error("Eksik bilgi", "Başlık ve konu metni gerekli.");
       return;
     }
+    if (!tagLabel.trim()) {
+      msg.error("Etiket gerekli", "Konu için bir etiket seç veya yeni etiket yaz.");
+      return;
+    }
     setCreating(true);
     try {
-      await api.createForumTopic(selectedGroupId, { title: t, body: b });
+      await api.createForumTopic(selectedGroupId, { title: t, body: b, tag_label: tagLabel.trim() });
       setTitle("");
       setBody("");
+      setTagLabel("Genel");
       setShowForm(false);
       qc.invalidateQueries({ queryKey: ["forum-topics", selectedGroupId] });
       qc.invalidateQueries({ queryKey: ["forum-quota"] });
+      qc.invalidateQueries({ queryKey: ["forum-tags"] });
       msg.success("Konu açıldı");
     } catch (e) {
       showApiError(msg, e, "Konu açılamadı");
@@ -199,6 +212,13 @@ export default function ForumPage() {
           <p className="text-xs text-zinc-500 mb-4">{selectedGroup?.group_name} sınıfında açılacak</p>
           <div className="space-y-3">
             <Input label="Başlık" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
+            <ForumTagField
+              label="Etiket"
+              value={tagLabel}
+              onChange={setTagLabel}
+              tags={(tags as ForumTag[] | undefined) ?? []}
+              listId="forum-tag-create"
+            />
             <label className="block space-y-1">
               <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Konu metni</span>
               <textarea
@@ -234,19 +254,18 @@ export default function ForumPage() {
                     <MessageSquare size={22} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">{topic.title}</h3>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-lg truncate">{topic.title}</h3>
+                      {topic.tag && <ForumTagBadge tag={topic.tag} />}
+                    </div>
                     <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{topic.body}</p>
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
                       {topic.author && (
-                        <StudentRow
-                          name={topic.author.full_name}
-                          photoUrl={topic.author.profile_photo_url}
-                          size={24}
-                          className="!gap-2"
-                        />
+                        <ForumAuthorRow author={topic.author} size={24} className="!gap-2" />
                       )}
                       <span>{formatWhen(topic.created_at)}</span>
                       <span>{topic.comment_count ?? 0} yorum</span>
+                      <span>{topic.reactions?.like_count ?? 0} beğeni</span>
                     </div>
                   </div>
                 </div>

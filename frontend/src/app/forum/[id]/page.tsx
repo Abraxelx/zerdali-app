@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Pencil, Send } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, LoadingSpinner, StudentRow } from "@/components/ui";
+import {
+  ForumAuthorRow,
+  ForumReactionsBar,
+  ForumTagBadge,
+  ForumTopicEditor,
+  emptyForumReactions,
+} from "@/components/forum";
+import { Button, Card, LoadingSpinner } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { api, ForumComment, ForumTopicDetail, normalizeGroupId } from "@/lib/api";
+import { api, ForumComment, ForumReactions, ForumTag, ForumTopicDetail, normalizeGroupId } from "@/lib/api";
 import { setStoredForumGroupId } from "@/lib/forum-group-storage";
 import { showApiError, useMessage } from "@/lib/messages";
 
@@ -31,20 +38,25 @@ function ForumShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CommentBlock({ comment }: { comment: ForumComment }) {
-  const author = comment.author;
+function CommentBlock({
+  comment,
+  onReaction,
+}: {
+  comment: ForumComment;
+  onReaction: (commentId: string, reactions: ForumReactions) => void;
+}) {
   return (
     <div className="flex gap-3 py-4 border-b border-zinc-500/10 last:border-0">
-      <StudentRow
-        name={author?.full_name ?? "Kullanıcı"}
-        photoUrl={author?.profile_photo_url}
-        subtitle={author?.username ? `@${author.username}` : undefined}
-        size={36}
-        className="shrink-0 w-36 sm:w-auto"
-      />
+      <ForumAuthorRow author={comment.author} size={36} className="shrink-0 w-36 sm:w-auto" />
       <div className="flex-1 min-w-0">
         <p className="text-xs text-zinc-400 mb-1 sm:hidden">{formatWhen(comment.created_at)}</p>
         <p className="text-sm whitespace-pre-wrap break-words">{comment.body}</p>
+        <ForumReactionsBar
+          targetType="comment"
+          targetId={comment.id}
+          reactions={comment.reactions ?? emptyForumReactions}
+          onUpdated={(next) => onReaction(comment.id, next)}
+        />
         <p className="text-xs text-zinc-400 mt-2 hidden sm:block">{formatWhen(comment.created_at)}</p>
       </div>
     </div>
@@ -59,12 +71,26 @@ export default function ForumTopicPage() {
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [topicReactions, setTopicReactions] = useState<ForumReactions>(emptyForumReactions);
 
   const { data: topic, isLoading } = useQuery({
     queryKey: ["forum-topic", topicId],
     queryFn: () => api.getForumTopic(topicId),
     enabled: !!topicId,
   });
+
+  const { data: tags } = useQuery({
+    queryKey: ["forum-tags"],
+    queryFn: api.getForumTags,
+  });
+
+  useEffect(() => {
+    if (topic?.reactions) {
+      setTopicReactions(topic.reactions);
+    }
+  }, [topic?.reactions]);
 
   useEffect(() => {
     const groupId = (topic as ForumTopicDetail | undefined)?.group?.id;
@@ -93,6 +119,36 @@ export default function ForumTopicPage() {
     }
   };
 
+  const handleCommentReaction = (commentId: string, reactions: ForumReactions) => {
+    qc.setQueryData<ForumTopicDetail>(["forum-topic", topicId], (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        comments: prev.comments.map((c) => (c.id === commentId ? { ...c, reactions } : c)),
+      };
+    });
+  };
+
+  const handleSaveEdit = async (payload: { title: string; body: string; tag_label: string }) => {
+    if (!payload.title || !payload.body || !payload.tag_label) {
+      msg.error("Eksik bilgi", "Başlık, etiket ve konu metni gerekli.");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await api.updateForumTopic(topicId, payload);
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ["forum-topic", topicId] });
+      qc.invalidateQueries({ queryKey: ["forum-topics"] });
+      qc.invalidateQueries({ queryKey: ["forum-tags"] });
+      msg.success("Konu güncellendi");
+    } catch (e) {
+      showApiError(msg, e, "Konu güncellenemedi");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   if (isLoading || !topic) {
     return (
       <ForumShell>
@@ -117,29 +173,61 @@ export default function ForumTopicPage() {
       )}
 
       <Card className="mb-6">
-        <h1 className="text-xl font-bold mb-3">{t.title}</h1>
-        <p className="text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">{t.body}</p>
-        <div className="mt-4 pt-4 border-t border-zinc-500/10 flex flex-wrap items-center gap-3">
-          {t.author && (
-            <StudentRow
-              name={t.author.full_name}
-              photoUrl={t.author.profile_photo_url}
-              subtitle={t.author.role === "superadmin" ? "Öğretmen" : `@${t.author.username}`}
-              size={40}
+        {editing ? (
+          <ForumTopicEditor
+            initialTitle={t.title}
+            initialBody={t.body}
+            initialTagLabel={t.tag?.label ?? "Genel"}
+            tags={(tags as ForumTag[] | undefined) ?? []}
+            saving={savingEdit}
+            onSave={handleSaveEdit}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <h1 className="text-xl font-bold">{t.title}</h1>
+                {t.tag && <ForumTagBadge tag={t.tag} />}
+              </div>
+              {t.can_edit && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs dark:border-zinc-700 hover:bg-zinc-500/5"
+                >
+                  <Pencil size={14} />
+                  Düzenle
+                </button>
+              )}
+            </div>
+            <p className="text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">{t.body}</p>
+            <div className="mt-4 pt-4 border-t border-zinc-500/10 flex flex-wrap items-center gap-3">
+              {t.author && <ForumAuthorRow author={t.author} size={40} />}
+              <span className="text-xs text-zinc-400">{formatWhen(t.created_at)}</span>
+            </div>
+            <ForumReactionsBar
+              targetType="topic"
+              targetId={t.id}
+              reactions={topicReactions}
+              onUpdated={setTopicReactions}
             />
-          )}
-          <span className="text-xs text-zinc-400">{formatWhen(t.created_at)}</span>
-        </div>
+          </>
+        )}
       </Card>
 
       <Card>
         <h2 className="font-semibold mb-1">Yorumlar ({t.comments.length})</h2>
-        <p className="text-xs text-zinc-500 mb-4">En eskiden en yeniye sıralı</p>
+        <p className="text-xs text-zinc-500 mb-4">En eskiden en yeniye sıralı — yorumlara da beğeni/beğenmeme verebilirsin.</p>
 
         {t.comments.length === 0 ? (
           <p className="text-sm text-zinc-500 py-4">Henüz yorum yok — ilk yorumu sen yaz.</p>
         ) : (
-          <div>{t.comments.map((c) => <CommentBlock key={c.id} comment={c} />)}</div>
+          <div>
+            {t.comments.map((c) => (
+              <CommentBlock key={c.id} comment={c} onReaction={handleCommentReaction} />
+            ))}
+          </div>
         )}
 
         <div className="mt-6 pt-4 border-t border-zinc-500/10">

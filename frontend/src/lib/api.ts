@@ -91,7 +91,24 @@ export type StudentOverview = {
   groups: { group_id: string; student_groups?: { group_name: string } }[];
 };
 
-export type ForumAuthor = Pick<Profile, "id" | "full_name" | "username" | "profile_photo_url" | "role">;
+export type ForumAuthor = Pick<Profile, "id" | "full_name" | "username" | "profile_photo_url" | "role"> & {
+  current_level?: { title: string; level_number: number } | null;
+};
+
+export type ForumTag = {
+  id: string;
+  slug?: string | null;
+  label: string;
+  color?: string | null;
+  sort_order?: number;
+  created_by?: string | null;
+};
+
+export type ForumReactions = {
+  like_count: number;
+  dislike_count: number;
+  user_reaction: "like" | "dislike" | null;
+};
 
 export type ForumTopic = {
   id: string;
@@ -99,9 +116,12 @@ export type ForumTopic = {
   body: string;
   author_id: string;
   group_id: string;
+  tag_id?: string | null;
   created_at: string;
   author?: ForumAuthor | null;
+  tag?: ForumTag | null;
   comment_count?: number;
+  reactions?: ForumReactions;
   group?: { id: string; group_name: string };
 };
 
@@ -126,10 +146,13 @@ export type ForumComment = {
   body: string;
   created_at: string;
   author?: ForumAuthor | null;
+  reactions?: ForumReactions;
 };
 
 export type ForumTopicDetail = ForumTopic & {
   comments: ForumComment[];
+  can_edit?: boolean;
+  can_edit_tag?: boolean;
 };
 
 function getToken(): string | null {
@@ -302,17 +325,35 @@ export const api = {
     apiFetch(`/admin/students/${studentId}/meblahs/${recordId}`, { method: "DELETE" }),
 
   getForumGroups: () => apiFetch<ForumGroup[]>("/forum/groups"),
+  getForumTags: () => apiFetch<ForumTag[]>("/forum/tags"),
+  createForumTag: (label: string) =>
+    apiFetch<ForumTag>("/forum/tags", { method: "POST", body: JSON.stringify({ label }) }),
+  updateForumTag: (tagId: string, label: string) =>
+    apiFetch<ForumTag>(`/forum/tags/${tagId}`, { method: "PUT", body: JSON.stringify({ label }) }),
   getForumTopics: (groupId: string | number) =>
     apiFetch<ForumTopic[]>(`/forum/groups/${normalizeGroupId(groupId)}/topics`),
   getForumQuota: () =>
     apiFetch<{ can_create: boolean; remaining_today: number | null; limit_per_day: number | null }>("/forum/quota"),
   getForumTopic: (id: string) => apiFetch<ForumTopicDetail>(`/forum/topics/${id}`),
-  createForumTopic: (groupId: string | number, body: { title: string; body: string }) =>
+  createForumTopic: (groupId: string | number, body: { title: string; body: string; tag_label?: string; tag_id?: string }) =>
     apiFetch<ForumTopic>(`/forum/groups/${normalizeGroupId(groupId)}/topics`, { method: "POST", body: JSON.stringify(body) }),
+  updateForumTopic: (
+    topicId: string,
+    body: { title?: string; body?: string; tag_label?: string; tag_id?: string }
+  ) => apiFetch<ForumTopicDetail>(`/forum/topics/${topicId}`, { method: "PUT", body: JSON.stringify(body) }),
   createForumComment: (topicId: string, body: string) =>
     apiFetch<ForumComment>(`/forum/topics/${topicId}/comments`, {
       method: "POST",
       body: JSON.stringify({ body }),
+    }),
+  setForumReaction: (body: {
+    target_type: "topic" | "comment";
+    target_id: string;
+    reaction: "like" | "dislike" | null;
+  }) =>
+    apiFetch<{ target_type: string; target_id: string; reactions: ForumReactions }>("/forum/reactions", {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 
   // Veli (parent)

@@ -6,8 +6,14 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, LoadingSpinner, StudentRow } from "@/components/ui";
-import { api, ForumComment, ForumTopicDetail, normalizeGroupId } from "@/lib/api";
+import {
+  ForumAuthorRow,
+  ForumReactionsBar,
+  ForumTagBadge,
+  emptyForumReactions,
+} from "@/components/forum";
+import { Button, Card, LoadingSpinner } from "@/components/ui";
+import { api, ForumComment, ForumReactions, ForumTopicDetail, normalizeGroupId } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { setStoredForumGroupId } from "@/lib/forum-group-storage";
 import { showApiError, useMessage } from "@/lib/messages";
@@ -20,27 +26,25 @@ function formatWhen(iso: string) {
   }
 }
 
-function authorSubtitle(author: ForumComment["author"]) {
-  if (!author) return undefined;
-  if (author.role === "superadmin") return "Öğretmen";
-  if (author.role === "veli") return "Veli";
-  return `@${author.username}`;
-}
-
-function CommentBlock({ comment }: { comment: ForumComment }) {
-  const author = comment.author;
+function CommentBlock({
+  comment,
+  onReaction,
+}: {
+  comment: ForumComment;
+  onReaction: (commentId: string, reactions: ForumReactions) => void;
+}) {
   return (
     <div className="flex gap-3 py-4 border-b border-zinc-500/10 last:border-0">
-      <StudentRow
-        name={author?.full_name ?? "Kullanıcı"}
-        photoUrl={author?.profile_photo_url}
-        subtitle={authorSubtitle(author)}
-        size={36}
-        className="shrink-0 w-36 sm:w-auto"
-      />
+      <ForumAuthorRow author={comment.author} size={36} className="shrink-0 w-36 sm:w-auto" />
       <div className="flex-1 min-w-0">
         <p className="text-xs text-zinc-400 mb-1 sm:hidden">{formatWhen(comment.created_at)}</p>
         <p className="text-sm whitespace-pre-wrap break-words">{comment.body}</p>
+        <ForumReactionsBar
+          targetType="comment"
+          targetId={comment.id}
+          reactions={comment.reactions ?? emptyForumReactions}
+          onUpdated={(next) => onReaction(comment.id, next)}
+        />
         <p className="text-xs text-zinc-400 mt-2 hidden sm:block">{formatWhen(comment.created_at)}</p>
       </div>
     </div>
@@ -55,12 +59,19 @@ export default function ParentForumTopicPage() {
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
+  const [topicReactions, setTopicReactions] = useState<ForumReactions>(emptyForumReactions);
 
   const { data: topic, isLoading } = useQuery({
     queryKey: ["forum-topic", topicId],
     queryFn: () => api.getForumTopic(topicId),
     enabled: !!topicId,
   });
+
+  useEffect(() => {
+    if (topic?.reactions) {
+      setTopicReactions(topic.reactions);
+    }
+  }, [topic?.reactions]);
 
   useEffect(() => {
     const groupId = (topic as ForumTopicDetail | undefined)?.group?.id;
@@ -87,6 +98,16 @@ export default function ParentForumTopicPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleCommentReaction = (commentId: string, reactions: ForumReactions) => {
+    qc.setQueryData<ForumTopicDetail>(["forum-topic", topicId], (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        comments: prev.comments.map((c) => (c.id === commentId ? { ...c, reactions } : c)),
+      };
+    });
   };
 
   if (isLoading || !topic) {
@@ -116,29 +137,35 @@ export default function ParentForumTopicPage() {
         )}
 
         <Card className="mb-6">
-          <h1 className="text-xl font-bold mb-3">{t.title}</h1>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <h1 className="text-xl font-bold">{t.title}</h1>
+            {t.tag && <ForumTagBadge tag={t.tag} />}
+          </div>
           <p className="text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">{t.body}</p>
           <div className="mt-4 pt-4 border-t border-zinc-500/10 flex flex-wrap items-center gap-3">
-            {t.author && (
-              <StudentRow
-                name={t.author.full_name}
-                photoUrl={t.author.profile_photo_url}
-                subtitle={authorSubtitle(t.author)}
-                size={40}
-              />
-            )}
+            {t.author && <ForumAuthorRow author={t.author} size={40} />}
             <span className="text-xs text-zinc-400">{formatWhen(t.created_at)}</span>
           </div>
+          <ForumReactionsBar
+            targetType="topic"
+            targetId={t.id}
+            reactions={topicReactions}
+            onUpdated={setTopicReactions}
+          />
         </Card>
 
         <Card>
-          <h2 className="font-semibold mb-1">Yorumlar ({t.comments.length})</h2>
-          <p className="text-xs text-zinc-500 mb-4">En eskiden en yeniye sıralı</p>
+        <h2 className="font-semibold mb-1">Yorumlar ({t.comments.length})</h2>
+        <p className="text-xs text-zinc-500 mb-4">En eskiden en yeniye sıralı — yorumlara beğeni/beğenmeme verebilirsin.</p>
 
           {t.comments.length === 0 ? (
             <p className="text-sm text-zinc-500 py-4">Henüz yorum yok — ilk yorumu sen yaz.</p>
           ) : (
-            <div>{t.comments.map((c) => <CommentBlock key={c.id} comment={c} />)}</div>
+            <div>
+              {t.comments.map((c) => (
+                <CommentBlock key={c.id} comment={c} onReaction={handleCommentReaction} />
+              ))}
+            </div>
           )}
 
           <div className="mt-6 pt-4 border-t border-zinc-500/10">
