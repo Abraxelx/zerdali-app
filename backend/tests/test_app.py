@@ -102,6 +102,11 @@ def test_forum_unauthorized(client):
     assert response.status_code == 401
 
 
+def test_game_2048_unauthorized(client):
+    response = client.get("/games/2048/stats")
+    assert response.status_code == 401
+
+
 def test_forgot_password_missing_email(client):
     response = client.post("/auth/forgot-password", json={})
     assert response.status_code == 422

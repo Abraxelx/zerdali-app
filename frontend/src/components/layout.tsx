@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Gamepad2,
   Sparkles,
   User,
   UserCircle,
@@ -52,6 +53,7 @@ const studentNav: NavEntry[] = [
     ],
   },
   { kind: "link", href: "/forum", label: "Forum", icon: MessageSquare },
+  { kind: "link", href: "/games/2048", label: "2048", icon: Gamepad2 },
   { kind: "link", href: "/profile", label: "Profil", icon: User },
 ];
 
@@ -80,6 +82,7 @@ const adminNav: NavEntry[] = [
     ],
   },
   { kind: "link", href: "/admin/gamification", label: "Oyun", icon: Sparkles },
+  { kind: "link", href: "/games/2048", label: "2048", icon: Gamepad2 },
   { kind: "link", href: "/forum", label: "Forum", icon: MessageSquare },
 ];
 

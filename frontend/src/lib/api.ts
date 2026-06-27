@@ -155,6 +155,26 @@ export type ForumTopicDetail = ForumTopic & {
   can_edit_tag?: boolean;
 };
 
+export type Game2048Run = {
+  id: string;
+  week_key: string;
+  score: number;
+  max_tile: number;
+  moves: number;
+  duration_sec: number;
+  status: "active" | "finished" | "abandoned";
+  started_at: string;
+  finished_at?: string | null;
+};
+
+export type Game2048Stats = {
+  week_key: string;
+  games_this_week: number;
+  active_run: Game2048Run | null;
+  best_all_time: { score: number; max_tile: number; moves: number; finished_at?: string } | null;
+  recent_runs: Game2048Run[];
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("zerdali_token");
@@ -238,6 +258,18 @@ export const api = {
   getGroups: () => apiFetch<unknown[]>("/student/groups"),
   getTeachers: () => apiFetch<TeacherProfile[]>("/student/teachers"),
   getClassLeaderboard: () => apiFetch<ClassLeaderboard[]>("/student/leaderboard"),
+  getGame2048Stats: () => apiFetch<Game2048Stats>("/games/2048/stats"),
+  startGame2048: () => apiFetch<Game2048Run>("/games/2048/start", { method: "POST" }),
+  finishGame2048: (
+    runId: string,
+    body: { score: number; max_tile: number; moves: number; duration_sec: number }
+  ) =>
+    apiFetch<Game2048Run>(`/games/2048/runs/${runId}/finish`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  abandonGame2048: (runId: string) =>
+    apiFetch<Game2048Run>(`/games/2048/runs/${runId}/abandon`, { method: "POST" }),
   submitAssignment: (id: string, body: FormData) =>
     apiFetch(`/student/assignments/${id}/submit`, { method: "POST", body }),
   updateProfile: (body: Record<string, string>) =>

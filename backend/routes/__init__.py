@@ -8,5 +8,6 @@ from routes.notification_routes import notification_bp
 from routes.forum_routes import forum_bp
 from routes.guardian_routes import guardian_bp
 from routes.presence_routes import presence_bp
+from routes.game_2048_routes import game_2048_bp
 
-ALL_BLUEPRINTS = [auth_bp, group_bp, lesson_bp, assignment_bp, gamification_bp, admin_bp, notification_bp, forum_bp, guardian_bp, presence_bp]
+ALL_BLUEPRINTS = [auth_bp, group_bp, lesson_bp, assignment_bp, gamification_bp, admin_bp, notification_bp, forum_bp, guardian_bp, presence_bp, game_2048_bp]
