@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Zerdali — Zerdalyum Platformu",
   description: "Oyunlaştırılmış eğitim platformu",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/zerdali-logo.png",
     apple: "/zerdali-logo.png",

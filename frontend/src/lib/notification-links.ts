@@ -62,15 +62,19 @@ export function notificationHref(
         if (tx === "ATTENDANCE") return "/parent/attendance";
         if (tx === "LESSON_SCORE") return "/parent/scores";
         if (tx === "HOMEWORK") return "/parent/assignments";
+        if (tx === "GAME_2048") return "/parent";
         return "/parent";
       }
       if (tx === "ATTENDANCE") return "/attendance";
       if (tx === "LESSON_SCORE") return "/scores";
       if (tx === "HOMEWORK") return "/assignments";
+      if (tx === "GAME_2048") return "/games/2048";
       return "/dashboard";
     }
     case "MEBLAH_EARNED":
       return isParent ? "/parent" : "/dashboard";
+    case "GAME_2048_REWARD":
+      return isParent ? null : "/games/2048";
     default:
       return null;
   }

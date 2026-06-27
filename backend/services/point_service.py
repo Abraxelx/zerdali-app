@@ -43,6 +43,7 @@ def grant_points(student_id: str, amount: int, transaction_type: str, descriptio
             "LESSON_SCORE": "Ders notu puanı",
             "ADMIN_BONUS": "Bonus puan",
             "HOMEWORK": "Ödev puanı",
+            "GAME_2048": "2048 ödülü",
         }
         notify_user(
             student_id,

@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Gamepad2, RotateCcw, Trophy } from "lucide-react";
+import { Gamepad2, RotateCcw, Trophy, Users } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
 import { Button, Card, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { api, Game2048Leaderboard, Game2048Run, Game2048Stats } from "@/lib/api";
+import {
+  api,
+  Game2048ClassLeaderboards,
+  Game2048Leaderboard,
+  Game2048Run,
+  Game2048Stats,
+} from "@/lib/api";
 import {
   createInitialState,
   Direction,
@@ -15,6 +21,7 @@ import {
   move,
   tileColor,
 } from "@/lib/games/2048/engine";
+import { registerGame2048Sw } from "@/lib/games/2048/register-sw";
 import { showApiError, useMessage } from "@/lib/messages";
 
 function useDuration(active: boolean) {
@@ -57,6 +64,7 @@ export default function Game2048Page() {
   const msg = useMessage();
   const qc = useQueryClient();
   const [phase, setPhase] = useState<"idle" | "playing" | "finished">("idle");
+  const [boardTab, setBoardTab] = useState<"global" | "class">("global");
   const [runId, setRunId] = useState<string | null>(null);
   const [state, setState] = useState<Game2048State>(() => createInitialState());
   const [result, setResult] = useState<Game2048Run | null>(null);
@@ -78,6 +86,16 @@ export default function Game2048Page() {
     enabled: canPlay,
   });
 
+  const { data: classBoards } = useQuery({
+    queryKey: ["game-2048-class-leaderboard"],
+    queryFn: () => api.getGame2048ClassLeaderboards(),
+    enabled: canPlay && boardTab === "class",
+  });
+
+  useEffect(() => {
+    registerGame2048Sw();
+  }, []);
+
   const startMutation = useMutation({
     mutationFn: api.startGame2048,
     onSuccess: (run) => {
@@ -92,7 +110,10 @@ export default function Game2048Page() {
 
   const abandonMutation = useMutation({
     mutationFn: api.abandonGame2048,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["game-2048-stats"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["game-2048-stats"] });
+      qc.invalidateQueries({ queryKey: ["game-2048-leaderboard"] });
+    },
     onError: (e) => showApiError(msg, e, "Oyun iptal edilemedi"),
   });
 
@@ -186,6 +207,15 @@ export default function Game2048Page() {
 
   const s = stats as Game2048Stats | undefined;
   const board = leaderboard as Game2048Leaderboard | undefined;
+  const classData = classBoards as Game2048ClassLeaderboards | undefined;
+  const quota = s?.quota;
+  const canStart =
+    !!quota?.can_start && !s?.active_run && phase === "idle" && !startMutation.isPending;
+  const quotaMessage = !quota?.enabled
+    ? "2048 şu an kapalı."
+    : quota.games_remaining <= 0
+      ? `Bu hafta oyun hakkın doldu (${quota.weekly_limit}).`
+      : `Bu hafta ${quota.games_remaining}/${quota.weekly_limit} oyun hakkın kaldı.`;
 
   return (
     <AuthGuard>
@@ -194,6 +224,16 @@ export default function Game2048Page() {
           title="2048"
           subtitle="Ok tuşları veya kaydırma ile oyna — 2048'de durmaz, en yüksek karoya kadar devam eder."
         />
+
+        {quota && (
+          <p
+            className={`text-sm mb-4 ${
+              quota.can_start ? "text-zinc-600 dark:text-zinc-400" : "text-amber-600 dark:text-amber-400"
+            }`}
+          >
+            {quotaMessage}
+          </p>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <Card>
@@ -231,7 +271,7 @@ export default function Game2048Page() {
               {phase === "idle" && (
                 <Button
                   onClick={() => startMutation.mutate()}
-                  disabled={startMutation.isPending || !!s?.active_run}
+                  disabled={!canStart}
                   className="inline-flex items-center gap-2"
                 >
                   <Gamepad2 size={16} />
@@ -293,38 +333,96 @@ export default function Game2048Page() {
 
           <div className="space-y-4">
             <Card>
-              <h2 className="font-semibold flex items-center gap-2 mb-1">
-                <Trophy size={18} className="text-amber-500" />
-                Haftalık sıralama
-              </h2>
-              <p className="text-xs text-zinc-500 mb-3">{board?.week_key ?? s?.week_key} · Öğrenci ve öğretmenler</p>
-              {board?.entries && board.entries.length > 0 ? (
-                <ul className="space-y-2">
-                  {board.entries.map((entry) => (
-                    <li
-                      key={entry.player_id}
-                      className={`flex items-center gap-3 rounded-lg px-2 py-2 ${
-                        entry.is_me ? "bg-amber-500/10 border border-amber-400/30" : ""
-                      }`}
-                    >
-                      <span className="w-6 text-center text-sm font-bold text-zinc-400">{entry.rank}</span>
-                      <StudentRow
-                        name={entry.full_name}
-                        photoUrl={entry.profile_photo_url}
-                        subtitle={`${entry.role_label} · ${entry.max_tile} karo · ${entry.score} puan`}
-                        size={32}
-                        className="flex-1 min-w-0"
-                      />
-                    </li>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <Trophy size={18} className="text-amber-500" />
+                  Haftalık sıralama
+                </h2>
+                <div className="flex rounded-lg border border-zinc-300/50 dark:border-zinc-600/50 text-xs overflow-hidden">
+                  <button
+                    type="button"
+                    className={`px-2 py-1 ${boardTab === "global" ? "bg-amber-500/20 font-semibold" : ""}`}
+                    onClick={() => setBoardTab("global")}
+                  >
+                    Genel
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-2 py-1 inline-flex items-center gap-1 ${boardTab === "class" ? "bg-amber-500/20 font-semibold" : ""}`}
+                    onClick={() => setBoardTab("class")}
+                  >
+                    <Users size={12} />
+                    Sınıf
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-500 mb-3">
+                {boardTab === "global"
+                  ? `${board?.week_key ?? s?.week_key} · Öğrenci ve öğretmenler`
+                  : `${classData?.week_key ?? s?.week_key} · Sınıf arkadaşların`}
+              </p>
+              {boardTab === "global" ? (
+                board?.entries && board.entries.length > 0 ? (
+                  <ul className="space-y-2">
+                    {board.entries.map((entry) => (
+                      <li
+                        key={entry.player_id}
+                        className={`flex items-center gap-3 rounded-lg px-2 py-2 ${
+                          entry.is_me ? "bg-amber-500/10 border border-amber-400/30" : ""
+                        }`}
+                      >
+                        <span className="w-6 text-center text-sm font-bold text-zinc-400">{entry.rank}</span>
+                        <StudentRow
+                          name={entry.full_name}
+                          photoUrl={entry.profile_photo_url}
+                          subtitle={`${entry.role_label} · ${entry.max_tile} karo · ${entry.score} puan`}
+                          size={32}
+                          className="flex-1 min-w-0"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-zinc-500">Bu hafta henüz bitmiş oyun yok.</p>
+                )
+              ) : classData?.boards && classData.boards.length > 0 ? (
+                <div className="space-y-4">
+                  {classData.boards.map((groupBoard) => (
+                    <div key={groupBoard.group_id}>
+                      <p className="text-sm font-medium mb-2">{groupBoard.group_name}</p>
+                      {groupBoard.entries.length > 0 ? (
+                        <ul className="space-y-2">
+                          {groupBoard.entries.map((entry) => (
+                            <li
+                              key={`${groupBoard.group_id}-${entry.player_id}`}
+                              className={`flex items-center gap-3 rounded-lg px-2 py-2 ${
+                                entry.is_me ? "bg-amber-500/10 border border-amber-400/30" : ""
+                              }`}
+                            >
+                              <span className="w-6 text-center text-sm font-bold text-zinc-400">{entry.rank}</span>
+                              <StudentRow
+                                name={entry.full_name}
+                                photoUrl={entry.profile_photo_url}
+                                subtitle={`${entry.max_tile} karo · ${entry.score} puan`}
+                                size={32}
+                                className="flex-1 min-w-0"
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-zinc-500">Bu sınıfta henüz skor yok.</p>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
-                <p className="text-sm text-zinc-500">Bu hafta henüz bitmiş oyun yok.</p>
+                <p className="text-sm text-zinc-500">Sınıf sıralaması için bir gruba kayıtlı olmalısın.</p>
               )}
             </Card>
 
             <Card>
-              <h3 className="font-semibold mb-3 text-sm">Rekorların</h3>
+              <h3 className="font-semibold mb-3 text-sm">Rekorların & ödüller</h3>
               {s?.best_all_time ? (
                 <p className="text-sm">
                   En iyi karo: <strong>{s.best_all_time.max_tile}</strong> · Skor:{" "}
@@ -333,7 +431,13 @@ export default function Game2048Page() {
               ) : (
                 <p className="text-sm text-zinc-500">Henüz bitmiş oyun yok.</p>
               )}
-              <p className="text-xs text-zinc-500 mt-2">Bu hafta {s?.games_this_week ?? 0} oyun oynadın.</p>
+              <p className="text-xs text-zinc-500 mt-2">
+                Bu hafta {s?.games_this_week ?? 0}/{quota?.weekly_limit ?? 5} oyun oynadın.
+              </p>
+              <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+                Haftalık ödüller: 1. +50 Zerdalyum (+ meblağ), 2. +30, 3. +20, 4–10. +10 · 512+ karo
+                katılım +5. Ödüller admin tarafından hafta sonunda dağıtılır.
+              </p>
             </Card>
 
             {s?.recent_runs && s.recent_runs.length > 0 && (
@@ -350,11 +454,6 @@ export default function Game2048Page() {
               </Card>
             )}
 
-            <Card>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Faz 2&apos;de haftalık oyun limiti ve otomatik ödül dağıtımı eklenecek.
-              </p>
-            </Card>
           </div>
         </div>
       </AppLayout>

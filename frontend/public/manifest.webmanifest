@@ -1,0 +1,16 @@
+{
+  "name": "Zerdali 2048",
+  "short_name": "2048",
+  "description": "Zerdali haftalık 2048 oyunu",
+  "start_url": "/games/2048",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#d97706",
+  "icons": [
+    {
+      "src": "/zerdali-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

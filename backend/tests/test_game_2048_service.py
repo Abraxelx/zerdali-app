@@ -41,34 +41,86 @@ def test_start_run_requires_student():
     assert exc.value.status_code == 403
 
 
+@patch("services.game_2048_service.get_settings")
 @patch("services.game_2048_service.get_supabase_admin")
-def test_start_run_allows_admin(mock_supabase):
+def test_start_run_allows_admin(mock_supabase, mock_settings):
     from services.game_2048_service import start_run
 
+    mock_settings.return_value = {"enabled": True, "weekly_play_limit": 5}
     mock_db = MagicMock()
     mock_supabase.return_value = mock_db
-    mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-        data=[]
-    )
-    mock_db.table.return_value.insert.return_value.execute.return_value = MagicMock(
-        data=[
-            {
-                "id": "run-1",
-                "student_id": "admin-1",
-                "week_key": "2026-W26",
-                "score": 0,
-                "max_tile": 0,
-                "moves": 0,
-                "duration_sec": 0,
-                "status": "active",
-                "started_at": "2026-06-27T10:00:00+03:00",
-                "finished_at": None,
-            }
-        ]
-    )
+
+    def table_side_effect(name):
+        table = MagicMock()
+        if name == "game_2048_runs":
+            select_chain = table.select.return_value
+            eq_chain = select_chain.eq.return_value
+            if select_chain.eq.return_value.eq.return_value.limit.return_value.execute.return_value is None:
+                pass
+            # count query: .select("id", count="exact").eq().eq().execute()
+            count_exec = MagicMock(count=0)
+            eq_chain.eq.return_value.execute.return_value = count_exec
+            eq_chain.eq.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+            table.insert.return_value.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": "run-1",
+                        "student_id": "admin-1",
+                        "week_key": "2026-W26",
+                        "score": 0,
+                        "max_tile": 0,
+                        "moves": 0,
+                        "duration_sec": 0,
+                        "status": "active",
+                        "started_at": "2026-06-27T10:00:00+03:00",
+                        "finished_at": None,
+                    }
+                ]
+            )
+        return table
+
+    mock_db.table.side_effect = table_side_effect
 
     result = start_run("admin-1", "superadmin")
     assert result["id"] == "run-1"
+
+
+@patch("services.game_2048_service.get_settings")
+@patch("services.game_2048_service.get_supabase_admin")
+def test_start_run_blocks_when_quota_exceeded(mock_supabase, mock_settings):
+    from services.game_2048_service import start_run
+
+    mock_settings.return_value = {"enabled": True, "weekly_play_limit": 5}
+    mock_db = MagicMock()
+    mock_supabase.return_value = mock_db
+    mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        count=5
+    )
+    mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+
+    with pytest.raises(APIError) as exc:
+        start_run("s1", "student")
+    assert exc.value.status_code == 429
+
+
+@patch("services.game_2048_service.get_settings")
+@patch("services.game_2048_service.get_supabase_admin")
+def test_get_quota(mock_supabase, mock_settings):
+    from services.game_2048_service import get_quota
+
+    mock_settings.return_value = {"enabled": True, "weekly_play_limit": 5}
+    mock_db = MagicMock()
+    mock_supabase.return_value = mock_db
+    mock_db.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        count=2
+    )
+
+    quota = get_quota("s1", "student")
+    assert quota["games_used"] == 2
+    assert quota["games_remaining"] == 3
+    assert quota["can_start"] is True
 
 
 @patch("services.game_2048_service.get_supabase_admin")

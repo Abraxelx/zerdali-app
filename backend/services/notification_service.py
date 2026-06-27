@@ -69,6 +69,8 @@ def resolve_notification_href(ntype: str, data: dict | None, role: str) -> str |
                 return "/parent/scores"
             if tx == "HOMEWORK":
                 return "/parent/assignments"
+            if tx == "GAME_2048":
+                return "/parent"
             return "/parent"
         if tx == "ATTENDANCE":
             return "/attendance"
@@ -76,10 +78,15 @@ def resolve_notification_href(ntype: str, data: dict | None, role: str) -> str |
             return "/scores"
         if tx == "HOMEWORK":
             return "/assignments"
+        if tx == "GAME_2048":
+            return "/games/2048"
         return "/dashboard"
 
     if ntype == "MEBLAH_EARNED":
         return "/parent" if role == "veli" else "/dashboard"
+
+    if ntype in ("GAME_2048_REWARD",):
+        return None if role == "veli" else "/games/2048"
 
     return None
 

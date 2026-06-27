@@ -170,9 +170,18 @@ export type Game2048Run = {
 export type Game2048Stats = {
   week_key: string;
   games_this_week: number;
+  quota: Game2048Quota;
   active_run: Game2048Run | null;
   best_all_time: { score: number; max_tile: number; moves: number; finished_at?: string } | null;
   recent_runs: Game2048Run[];
+};
+
+export type Game2048Quota = {
+  enabled: boolean;
+  weekly_limit: number;
+  games_used: number;
+  games_remaining: number;
+  can_start: boolean;
 };
 
 export type Game2048LeaderboardEntry = {
@@ -191,6 +200,41 @@ export type Game2048LeaderboardEntry = {
 export type Game2048Leaderboard = {
   week_key: string;
   entries: Game2048LeaderboardEntry[];
+};
+
+export type Game2048ClassBoard = {
+  group_id: string;
+  group_name: string;
+  entries: Game2048LeaderboardEntry[];
+};
+
+export type Game2048ClassLeaderboards = {
+  week_key: string;
+  boards: Game2048ClassBoard[];
+};
+
+export type Game2048Settings = {
+  enabled: boolean;
+  weekly_play_limit: number;
+  participation_min_tile: number;
+  participation_zerdalyum: number;
+  rank1_zerdalyum: number;
+  rank2_zerdalyum: number;
+  rank3_zerdalyum: number;
+  rank4_10_zerdalyum: number;
+  rank1_meblah_type_id: string | null;
+};
+
+export type Game2048WeeklyReward = {
+  id: string;
+  week_key: string;
+  player_id: string;
+  reward_kind: "rank" | "participation";
+  rank?: number | null;
+  zerdalyum: number;
+  meblah_type_id?: string | null;
+  granted_at: string;
+  profiles?: { full_name?: string; username?: string };
 };
 
 function getToken(): string | null {
@@ -277,7 +321,9 @@ export const api = {
   getTeachers: () => apiFetch<TeacherProfile[]>("/student/teachers"),
   getClassLeaderboard: () => apiFetch<ClassLeaderboard[]>("/student/leaderboard"),
   getGame2048Stats: () => apiFetch<Game2048Stats>("/games/2048/stats"),
+  getGame2048Quota: () => apiFetch<Game2048Quota>("/games/2048/quota"),
   getGame2048Leaderboard: () => apiFetch<Game2048Leaderboard>("/games/2048/leaderboard"),
+  getGame2048ClassLeaderboards: () => apiFetch<Game2048ClassLeaderboards>("/games/2048/leaderboard/class"),
   startGame2048: () => apiFetch<Game2048Run>("/games/2048/start", { method: "POST" }),
   finishGame2048: (
     runId: string,
@@ -289,6 +335,21 @@ export const api = {
     }),
   abandonGame2048: (runId: string) =>
     apiFetch<Game2048Run>(`/games/2048/runs/${runId}/abandon`, { method: "POST" }),
+  getGame2048Settings: () => apiFetch<Game2048Settings>("/admin/games/2048/settings"),
+  updateGame2048Settings: (body: Partial<Game2048Settings>) =>
+    apiFetch<Game2048Settings>("/admin/games/2048/settings", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  distributeGame2048Rewards: (weekKey?: string, force?: boolean) =>
+    apiFetch<{ week_key: string; granted_count: number }>("/admin/games/2048/distribute", {
+      method: "POST",
+      body: JSON.stringify({ week_key: weekKey, force: !!force }),
+    }),
+  getGame2048WeeklyRewards: (weekKey?: string) =>
+    apiFetch<{ week_key: string; rewards: Game2048WeeklyReward[] }>(
+      `/admin/games/2048/rewards${weekKey ? `?week_key=${encodeURIComponent(weekKey)}` : ""}`
+    ),
   submitAssignment: (id: string, body: FormData) =>
     apiFetch(`/student/assignments/${id}/submit`, { method: "POST", body }),
   updateProfile: (body: Record<string, string>) =>

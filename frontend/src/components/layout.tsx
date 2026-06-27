@@ -16,6 +16,7 @@ import {
   Menu,
   MessageSquare,
   Gamepad2,
+  Settings2,
   Sparkles,
   User,
   UserCircle,
@@ -81,8 +82,9 @@ const adminNav: NavEntry[] = [
       { href: "/admin/activity", label: "Giriş Kayıtları", icon: LogIn },
     ],
   },
-  { kind: "link", href: "/admin/gamification", label: "Oyun", icon: Sparkles },
-  { kind: "link", href: "/games/2048", label: "2048", icon: Gamepad2 },
+  { kind: "link", href: "/admin/gamification", label: "Meblağ", icon: Sparkles },
+  { kind: "link", href: "/admin/games/2048", label: "2048 Ayarları", icon: Settings2 },
+  { kind: "link", href: "/games/2048", label: "2048 Oyna", icon: Gamepad2 },
   { kind: "link", href: "/forum", label: "Forum", icon: MessageSquare },
 ];
 
