@@ -13,7 +13,8 @@ def init_cors(app: Flask) -> None:
         origin = request.headers.get("Origin")
         if not is_origin_allowed(origin):
             return None
-        response = app.make_response("", 204)
+        response = app.make_response("")
+        response.status_code = 204
         return apply_cors_headers(response, origin)
 
     @app.after_request
