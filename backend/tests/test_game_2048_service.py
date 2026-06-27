@@ -115,3 +115,63 @@ def test_finish_run_updates_row(mock_supabase):
     )
     assert result["status"] == "finished"
     assert result["max_tile"] == 512
+
+
+@patch("services.game_2048_service.get_supabase_admin")
+def test_weekly_leaderboard_includes_teacher(mock_supabase):
+    from services.game_2048_service import get_weekly_leaderboard
+
+    mock_db = MagicMock()
+    mock_supabase.return_value = mock_db
+
+    def table_side_effect(name):
+        table = MagicMock()
+        if name == "game_2048_runs":
+            chain = table.select.return_value.eq.return_value.eq.return_value
+            chain.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "student_id": "student-1",
+                        "score": 1000,
+                        "max_tile": 256,
+                        "moves": 80,
+                        "finished_at": "2026-06-27T10:00:00+03:00",
+                    },
+                    {
+                        "student_id": "admin-1",
+                        "score": 5000,
+                        "max_tile": 1024,
+                        "moves": 120,
+                        "finished_at": "2026-06-27T11:00:00+03:00",
+                    },
+                ]
+            )
+        elif name == "profiles":
+            chain = table.select.return_value.in_.return_value.in_.return_value
+            chain.execute.return_value = MagicMock(
+                data=[
+                    {
+                        "id": "student-1",
+                        "full_name": "Ali",
+                        "username": "ali",
+                        "profile_photo_url": None,
+                        "role": "student",
+                    },
+                    {
+                        "id": "admin-1",
+                        "full_name": "Öğretmen",
+                        "username": "admin",
+                        "profile_photo_url": None,
+                        "role": "superadmin",
+                    },
+                ]
+            )
+        return table
+
+    mock_db.table.side_effect = table_side_effect
+
+    result = get_weekly_leaderboard("student-1", "student")
+    assert len(result["entries"]) == 2
+    assert result["entries"][0]["full_name"] == "Öğretmen"
+    assert result["entries"][0]["role_label"] == "Öğretmen"
+    assert result["entries"][1]["is_me"] is True

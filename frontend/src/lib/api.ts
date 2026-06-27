@@ -175,6 +175,24 @@ export type Game2048Stats = {
   recent_runs: Game2048Run[];
 };
 
+export type Game2048LeaderboardEntry = {
+  rank: number;
+  player_id: string;
+  full_name: string;
+  profile_photo_url?: string | null;
+  role: "student" | "superadmin";
+  role_label: string;
+  max_tile: number;
+  score: number;
+  moves: number;
+  is_me?: boolean;
+};
+
+export type Game2048Leaderboard = {
+  week_key: string;
+  entries: Game2048LeaderboardEntry[];
+};
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("zerdali_token");
@@ -259,6 +277,7 @@ export const api = {
   getTeachers: () => apiFetch<TeacherProfile[]>("/student/teachers"),
   getClassLeaderboard: () => apiFetch<ClassLeaderboard[]>("/student/leaderboard"),
   getGame2048Stats: () => apiFetch<Game2048Stats>("/games/2048/stats"),
+  getGame2048Leaderboard: () => apiFetch<Game2048Leaderboard>("/games/2048/leaderboard"),
   startGame2048: () => apiFetch<Game2048Run>("/games/2048/start", { method: "POST" }),
   finishGame2048: (
     runId: string,

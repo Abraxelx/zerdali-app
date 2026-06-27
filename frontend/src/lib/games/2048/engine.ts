@@ -57,8 +57,9 @@ export function createInitialState(): Game2048State {
   };
 }
 
-function slideLeft(row: number[]): { row: number[]; gained: number; changed: boolean } {
-  const filtered = row.filter((v) => v !== 0);
+/** Sıfır olmayan karoları sola yasla ve birleştir. */
+function mergeLine(line: number[]): { line: number[]; gained: number; changed: boolean } {
+  const filtered = line.filter((v) => v !== 0);
   const merged: number[] = [];
   let gained = 0;
   let i = 0;
@@ -73,34 +74,63 @@ function slideLeft(row: number[]): { row: number[]; gained: number; changed: boo
       i += 1;
     }
   }
-  while (merged.length < SIZE) merged.push(0);
-  const changed = merged.some((v, idx) => v !== row[idx]);
-  return { row: merged, gained, changed };
+  while (merged.length < line.length) merged.push(0);
+  const changed = merged.some((v, idx) => v !== line[idx]);
+  return { line: merged, gained, changed };
 }
 
-function rotateGrid(grid: number[][]): number[][] {
-  const next = emptyGrid();
-  for (let r = 0; r < SIZE; r++) {
-    for (let c = 0; c < SIZE; c++) {
-      next[c][SIZE - 1 - r] = grid[r][c];
-    }
-  }
-  return next;
+function shiftRow(row: number[], toLeft: boolean): { row: number[]; gained: number; changed: boolean } {
+  const working = toLeft ? [...row] : [...row].reverse();
+  const result = mergeLine(working);
+  return {
+    row: toLeft ? result.line : result.line.reverse(),
+    gained: result.gained,
+    changed: result.changed,
+  };
 }
 
-function moveLeft(state: Game2048State): Game2048State | null {
+function shiftColumn(grid: number[][], col: number, towardTop: boolean): {
+  column: number[];
+  gained: number;
+  changed: boolean;
+} {
+  const column = grid.map((row) => row[col]);
+  const result = shiftRow(column, towardTop);
+  return { column: result.row, gained: result.gained, changed: result.changed };
+}
+
+export function move(state: Game2048State, direction: Direction): Game2048State | null {
+  if (state.gameOver) return null;
+
   let changed = false;
   let gained = 0;
-  const grid = state.grid.map((row) => {
-    const result = slideLeft(row);
-    if (result.changed) changed = true;
-    gained += result.gained;
-    return result.row;
-  });
+  const grid = cloneGrid(state.grid);
+
+  if (direction === "left" || direction === "right") {
+    const toLeft = direction === "left";
+    for (let r = 0; r < SIZE; r++) {
+      const result = shiftRow(grid[r], toLeft);
+      if (result.changed) changed = true;
+      gained += result.gained;
+      grid[r] = result.row;
+    }
+  } else {
+    const towardTop = direction === "up";
+    for (let c = 0; c < SIZE; c++) {
+      const result = shiftColumn(grid, c, towardTop);
+      if (result.changed) changed = true;
+      gained += result.gained;
+      for (let r = 0; r < SIZE; r++) {
+        grid[r][c] = result.column[r];
+      }
+    }
+  }
+
   if (!changed) return null;
+
   const withTile = spawnTile(grid);
   const maxTile = Math.max(state.maxTile, gridMaxTile(withTile));
-  return {
+  const next: Game2048State = {
     grid: withTile,
     score: state.score + gained,
     maxTile,
@@ -108,26 +138,6 @@ function moveLeft(state: Game2048State): Game2048State | null {
     gameOver: false,
     wonTile: state.wonTile || maxTile >= 2048,
   };
-}
-
-export function move(state: Game2048State, direction: Direction): Game2048State | null {
-  if (state.gameOver) return null;
-
-  let working = state;
-  const rotations: Record<Direction, number> = { left: 0, up: 1, right: 2, down: 3 };
-  for (let i = 0; i < rotations[direction]; i++) {
-    working = { ...working, grid: rotateGrid(working.grid) };
-  }
-
-  const moved = moveLeft(working);
-  if (!moved) return null;
-
-  let grid = moved.grid;
-  for (let i = 0; i < (4 - rotations[direction]) % 4; i++) {
-    grid = rotateGrid(grid);
-  }
-
-  const next: Game2048State = { ...moved, grid };
   if (!canMove(next.grid)) {
     next.gameOver = true;
   }

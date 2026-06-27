@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Gamepad2, RotateCcw, Trophy } from "lucide-react";
 import { AppLayout, AuthGuard } from "@/components/layout";
-import { Button, Card, LoadingSpinner, PageHeader } from "@/components/ui";
+import { Button, Card, LoadingSpinner, PageHeader, StudentRow } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
-import { api, Game2048Run, Game2048Stats } from "@/lib/api";
+import { api, Game2048Leaderboard, Game2048Run, Game2048Stats } from "@/lib/api";
 import {
   createInitialState,
   Direction,
@@ -72,6 +72,12 @@ export default function Game2048Page() {
     enabled: canPlay,
   });
 
+  const { data: leaderboard } = useQuery({
+    queryKey: ["game-2048-leaderboard"],
+    queryFn: () => api.getGame2048Leaderboard(),
+    enabled: canPlay,
+  });
+
   const startMutation = useMutation({
     mutationFn: api.startGame2048,
     onSuccess: (run) => {
@@ -103,6 +109,7 @@ export default function Game2048Page() {
       setPhase("finished");
       setRunId(null);
       qc.invalidateQueries({ queryKey: ["game-2048-stats"] });
+      qc.invalidateQueries({ queryKey: ["game-2048-leaderboard"] });
     },
     onError: (e) => showApiError(msg, e, "Skor kaydedilemedi"),
   });
@@ -178,6 +185,7 @@ export default function Game2048Page() {
   }
 
   const s = stats as Game2048Stats | undefined;
+  const board = leaderboard as Game2048Leaderboard | undefined;
 
   return (
     <AuthGuard>
@@ -285,10 +293,38 @@ export default function Game2048Page() {
 
           <div className="space-y-4">
             <Card>
-              <h2 className="font-semibold flex items-center gap-2 mb-3">
+              <h2 className="font-semibold flex items-center gap-2 mb-1">
                 <Trophy size={18} className="text-amber-500" />
-                Rekorların
+                Haftalık sıralama
               </h2>
+              <p className="text-xs text-zinc-500 mb-3">{board?.week_key ?? s?.week_key} · Öğrenci ve öğretmenler</p>
+              {board?.entries && board.entries.length > 0 ? (
+                <ul className="space-y-2">
+                  {board.entries.map((entry) => (
+                    <li
+                      key={entry.player_id}
+                      className={`flex items-center gap-3 rounded-lg px-2 py-2 ${
+                        entry.is_me ? "bg-amber-500/10 border border-amber-400/30" : ""
+                      }`}
+                    >
+                      <span className="w-6 text-center text-sm font-bold text-zinc-400">{entry.rank}</span>
+                      <StudentRow
+                        name={entry.full_name}
+                        photoUrl={entry.profile_photo_url}
+                        subtitle={`${entry.role_label} · ${entry.max_tile} karo · ${entry.score} puan`}
+                        size={32}
+                        className="flex-1 min-w-0"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-zinc-500">Bu hafta henüz bitmiş oyun yok.</p>
+              )}
+            </Card>
+
+            <Card>
+              <h3 className="font-semibold mb-3 text-sm">Rekorların</h3>
               {s?.best_all_time ? (
                 <p className="text-sm">
                   En iyi karo: <strong>{s.best_all_time.max_tile}</strong> · Skor:{" "}
@@ -316,8 +352,7 @@ export default function Game2048Page() {
 
             <Card>
               <p className="text-xs text-zinc-500 leading-relaxed">
-                Faz 2&apos;de haftalık oyun limiti ve sıralama tablosu eklenecek. Şimdilik sınırsız
-                oynayabilirsin.
+                Faz 2&apos;de haftalık oyun limiti ve otomatik ödül dağıtımı eklenecek.
               </p>
             </Card>
           </div>

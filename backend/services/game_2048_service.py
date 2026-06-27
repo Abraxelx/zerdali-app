@@ -62,6 +62,89 @@ def _serialize_run(row: dict) -> dict:
     }
 
 
+PROFILE_SELECT = "id, full_name, username, profile_photo_url, role"
+
+
+def _run_rank_key(run: dict) -> tuple:
+    return (
+        -int(run.get("max_tile") or 0),
+        -int(run.get("score") or 0),
+        int(run.get("moves") or 0),
+        run.get("finished_at") or "",
+    )
+
+
+def _role_label(role: str | None) -> str:
+    if role == "superadmin":
+        return "Öğretmen"
+    return "Öğrenci"
+
+
+def get_weekly_leaderboard(user_id: str, role: str, limit: int = 20) -> dict:
+    _assert_player(role)
+    db = get_supabase_admin()
+    week_key = istanbul_week_key()
+
+    runs_res = (
+        db.table("game_2048_runs")
+        .select("student_id, score, max_tile, moves, finished_at")
+        .eq("week_key", week_key)
+        .eq("status", "finished")
+        .execute()
+    )
+
+    best_by_player: dict[str, dict] = {}
+    for row in runs_res.data or []:
+        pid = row.get("student_id")
+        if not pid:
+            continue
+        current = best_by_player.get(pid)
+        if current is None or _run_rank_key(row) < _run_rank_key(current):
+            best_by_player[pid] = row
+
+    if not best_by_player:
+        return {"week_key": week_key, "entries": []}
+
+    player_ids = list(best_by_player.keys())
+    profiles_res = (
+        db.table("profiles")
+        .select(PROFILE_SELECT)
+        .in_("id", player_ids)
+        .in_("role", list(PLAYABLE_ROLES))
+        .execute()
+    )
+    profiles = {p["id"]: p for p in (profiles_res.data or [])}
+
+    ranked = sorted(
+        (
+            {**best_by_player[pid], "profile": profiles[pid]}
+            for pid in player_ids
+            if pid in profiles
+        ),
+        key=_run_rank_key,
+    )
+
+    entries = []
+    for index, row in enumerate(ranked[:limit], start=1):
+        profile = row["profile"]
+        entries.append(
+            {
+                "rank": index,
+                "player_id": profile["id"],
+                "full_name": profile.get("full_name") or "Kullanıcı",
+                "profile_photo_url": profile.get("profile_photo_url"),
+                "role": profile.get("role"),
+                "role_label": _role_label(profile.get("role")),
+                "max_tile": row["max_tile"],
+                "score": row["score"],
+                "moves": row["moves"],
+                "is_me": profile["id"] == user_id,
+            }
+        )
+
+    return {"week_key": week_key, "entries": entries}
+
+
 def get_my_stats(student_id: str, role: str) -> dict:
     _assert_player(role)
     db = get_supabase_admin()
