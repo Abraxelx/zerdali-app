@@ -1,6 +1,5 @@
 from flask import Flask, request
 
-from config import Config
 from utils.cors_helpers import apply_cors_headers, is_origin_allowed
 
 
