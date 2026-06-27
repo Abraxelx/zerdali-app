@@ -22,6 +22,6 @@ services:
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: CORS_ORIGINS
-        sync: false
+        value: https://zerdali-app.vercel.app,http://localhost:3000,http://127.0.0.1:3000
       - key: PASSWORD_RESET_REDIRECT_URL
         sync: false

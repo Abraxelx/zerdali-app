@@ -62,7 +62,7 @@ def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if request.method == "OPTIONS":
-            return f(*args, **kwargs)
+            return "", 204
         token = get_bearer_token()
         if not token:
             raise APIError("Authorization required", 401)

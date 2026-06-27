@@ -9,18 +9,27 @@ os.environ.setdefault("FLASK_RUN_PORT", _default_port)
 os.environ.setdefault("FLASK_APP", "app")
 
 
+def _normalize_cors_origin(origin: str) -> str:
+    return origin.strip().strip('"').strip("'").rstrip("/")
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
     PORT = int(os.getenv("PORT", "5001"))
 
-    CORS_ORIGINS = [
-        origin.strip()
-        for origin in os.getenv(
-            "CORS_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000",
-        ).split(",")
-        if origin.strip()
-    ]
+    DEFAULT_CORS_ORIGINS = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000,"
+        "https://zerdali-app.vercel.app"
+    )
+
+    CORS_ORIGINS = list(
+        dict.fromkeys(
+            _normalize_cors_origin(origin)
+            for origin in os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS).split(",")
+            if _normalize_cors_origin(origin)
+        )
+    )
 
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
     SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")

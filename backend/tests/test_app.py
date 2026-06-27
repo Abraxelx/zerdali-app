@@ -24,6 +24,29 @@ def test_health(client):
     assert data["service"] == "zerdali-api"
 
 
+def test_cors_preflight_notification_read(client):
+    response = client.options(
+        "/notifications/test-id/read",
+        headers={
+            "Origin": "https://zerdali-app.vercel.app",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "Authorization, Content-Type",
+        },
+    )
+    assert response.status_code == 204
+    assert response.headers.get("Access-Control-Allow-Origin") == "https://zerdali-app.vercel.app"
+    assert "POST" in (response.headers.get("Access-Control-Allow-Methods") or "")
+
+
+def test_cors_on_unauthorized(client):
+    response = client.get(
+        "/auth/me",
+        headers={"Origin": "https://zerdali-app.vercel.app"},
+    )
+    assert response.status_code == 401
+    assert response.headers.get("Access-Control-Allow-Origin") == "https://zerdali-app.vercel.app"
+
+
 def test_register_missing_fields(client):
     response = client.post("/auth/register", json={"email": "test@test.com"})
     assert response.status_code == 422

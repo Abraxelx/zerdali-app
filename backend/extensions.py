@@ -1,29 +1,33 @@
 from flask import Flask, request
 from flask_cors import CORS
 
-from config import Config
+from utils.cors_helpers import CORS_ALLOW_HEADERS, CORS_ALLOW_METHODS, apply_cors_headers, is_origin_allowed
 
 
 def init_cors(app: Flask) -> None:
     CORS(
         app,
-        resources={r"/*": {"origins": Config.CORS_ORIGINS}},
+        resources={r"/*": {"origins": is_origin_allowed}},
         supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=CORS_ALLOW_HEADERS.split(", "),
         expose_headers=["Content-Type"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        methods=CORS_ALLOW_METHODS.split(", "),
         max_age=86400,
     )
+
+    @app.before_request
+    def handle_preflight():
+        if request.method != "OPTIONS":
+            return None
+        origin = request.headers.get("Origin")
+        if not is_origin_allowed(origin):
+            return None
+        response = app.make_response("", 204)
+        return apply_cors_headers(response, origin)
 
     @app.after_request
     def add_cors_headers(response):
         """Ensure CORS headers on error responses too."""
         if response.headers.get("Access-Control-Allow-Origin"):
             return response
-        origin = request.headers.get("Origin")
-        if origin in Config.CORS_ORIGINS:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        return response
+        return apply_cors_headers(response, request.headers.get("Origin"))
